@@ -34,7 +34,7 @@ rule mytoken = parse
   | "->"       { ARROW }
   | "+"        { PLUS }
   | "-"        { MINUS }
-  | "-"        { MULT }
+  | "*"        { MULT }
   | "/"        { DIV }
   | "if"       { IF }
   | "else"     { ELSE }

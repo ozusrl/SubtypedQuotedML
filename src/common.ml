@@ -1,33 +1,66 @@
-
 type id = string
 
 type dec = Valbind of (id * exp)
 
-and const_exp = CInt of int | CBool of bool
+and const = CInt of int | CBool of bool
 
 and abs = Abs of id * exp
 
-and binexp =
-    Plus     of exp * exp
-  | Minus    of exp * exp
-  | Mult     of exp * exp
-  | Div      of exp * exp
-  | Equals   of exp * exp
+and binop = Plus | Minus | Mult | Div | Equals
 
 and exp  =
-    IdE      of id
-  | ConstE   of const_exp
+  | IdE      of id
+  | ConstE   of const
   | AppE     of exp * exp
   | AbsE     of abs
+  | LetInE   of dec * exp
+  | FixE     of id * abs
+  | CondE    of (exp * exp) list
+
+  | CodeE    of value
   | BoxE     of exp
   | UnboxE   of exp
   | RunE     of exp
-  | LetInE   of dec * exp
   | LiftE    of exp
-  | FixE     of id * abs
-  | CondE    of (exp * exp) list
-  | BinaryE  of binexp
 
+and env = (id * value ref) list
 
-let show_exp exp = "ok"
-let show_val v = "ok"
+and stdfun =
+  | StdCurry    of id * (value -> stdfun)
+  | StdFunction of id * (value -> value)
+
+and fun_val =
+  | StdFun  of stdfun
+  | Closure of env * id * exp
+
+and value =
+  | ConstV of const
+  | ClosV  of fun_val
+  | CodeV  of exp
+  | UnitV
+
+let rec show_exp exp = "<exp>" (* TODO *)
+
+and show_const = function
+| CInt i -> string_of_int i
+| CBool b -> string_of_bool b
+
+and show_stdfun = function
+| StdCurry (id, _)
+| StdFunction (id, _) -> "<function: " ^ id ^ ">"
+
+and show_val = function
+| ConstV c -> show_const c
+| ClosV (StdFun fn) -> show_stdfun fn
+| ClosV (Closure (env, id, exp)) -> "<closure>"
+| CodeV exp -> "<code: " ^ show_exp exp ^ ">"
+| UnitV -> "Unit"
+
+(*type ty = TyInt | TyBool | TyUnit | TyCode | TyFun*)
+
+let val_type = function
+| ConstV (CInt _) -> "TyInt"
+| ConstV (CBool _) -> "TyBool"
+| ClosV _ -> "TyFun"
+| CodeV _ -> "TyCode"
+| UnitV -> "TyUnit"

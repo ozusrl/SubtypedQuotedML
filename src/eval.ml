@@ -96,7 +96,7 @@ and apply_binary_op binop e1 e2 = (match binop, e1, e2 with
 and eval_staged env exp n = (match exp with
 | IdE id -> IdE id
 | ConstE e -> ConstE e
-| AppE (f, p) -> AppE (eval_staged env f n, eval_staged env f n)
+| AppE (f, p) -> AppE (eval_staged env f n, eval_staged env p n)
 | AbsE (Abs (id, body)) -> AbsE (Abs (id, eval_staged env body n))
 | LetInE (Valbind (id, exp), body) ->
     LetInE (Valbind (id, eval_staged env exp n), eval_staged env body n)
@@ -115,7 +115,7 @@ and eval_staged env exp n = (match exp with
     if n < 0 then raise StageException
     else begin if n = 1 then
       match eval env exp with
-      | CodeV exp' -> CodeE (eval env exp')
+      | CodeV exp' -> exp'
       | ConstV c -> ConstE c
       | _ -> raise StageException
     else

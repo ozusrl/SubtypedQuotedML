@@ -12,7 +12,7 @@ let _ =
     with Parsing.Parse_error -> print_endline "Parse error.\n"
        | Failure s -> print_endline ("Unexpected error occured: " ^ s)
        | Lexer.EndInput -> exit 0
-       | Eval.TypeMismatch (found, expected) ->
-           Printf.printf "TypeMismatch: expected: %s, found: %s.\n" found expected
+       | Eval.TypeMismatch (expected, found) ->
+           Printf.printf "TypeMismatch: expected: %s, found: %s.\n" expected found
        | exc       -> print_endline (Printexc.to_string exc)
   done

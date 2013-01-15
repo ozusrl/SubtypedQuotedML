@@ -4,8 +4,9 @@ exception Not_bound of id
 exception TypeMismatch of (string * string)
 exception StageException
 exception NotImplemented
+exception Failure of string
 
-(* Environment operations {{{ *)
+(* Environment operations {{{ ***************************************)
 
 let bind_value env id value = (id, ref value) :: env
 
@@ -19,12 +20,15 @@ let set_value env id value =
 
 let lookup env id = !(lookup_ref env id)
 
-(* Environment operations }}} *)
+(* Environment operations }}} ***************************************)
 
-(* Fun interface {{{ *)
+(* Mappings of OCaml function and standard environment {{{ **********)
 
 let stdenv =
-  let mk_arith_fun id fn = 
+  (* return a object language function from OCaml function with the type of
+   * int -> int *)
+  let mk_arith_fun id fn =
+    (* make OCaml function a curried function in object language *)
     let inner_fun i1 = StdFunction (id, function
       | ConstV (CInt i2) -> ConstV (CInt (fn i1 i2))
       | not_int -> raise (TypeMismatch ("TyInt", val_type not_int)))
@@ -33,19 +37,24 @@ let stdenv =
       | ConstV (CInt i1) -> inner_fun i1
       | not_int -> raise (TypeMismatch ("TyInt", val_type not_int)))
     in
+
     ClosV (StdFun curry_fun)
   in
+  (* map OCaml's `=` function to object language *)
   let eq = ClosV (StdFun (StdCurry ("=", fun v1 ->
     StdFunction ("=", fun v2 -> ConstV (CBool (v1 = v2))))))
   in
+  (* standard environment *)
   [ ("+", ref (mk_arith_fun "+" (+)))
   ; ("-", ref (mk_arith_fun "-" (-)))
   ; ("*", ref (mk_arith_fun "*" ( * )))
   ; ("/", ref (mk_arith_fun "/" (/)))
   ; ("=", ref eq)
-  ] 
+  ]
 
-(* Fun interface }}} *)
+(* Mappings of OCaml function and standard environment }}} **********)
+
+(* Eval {{{ *********************************************************)
 
 let rec eval env = function
 | IdE id -> lookup env id
@@ -71,16 +80,16 @@ let rec eval env = function
 
 | CondE [] -> UnitV
 (* FIXME: type errors, unit value *)
-| CondE ((g, e) :: r) ->
-    (match eval env g with
-       | ConstV (CBool true) -> eval env e
-       | _ -> eval env (CondE r))
+| CondE ((g, e) :: r) -> (match eval env g with
+  | ConstV (CBool true) -> eval env e
+  | _ -> eval env (CondE r))
 
-| CodeE value -> value
-| BoxE exp    -> CodeV (eval_staged env exp 1)
+| ValueE value -> value
+| BoxE exp    -> BoxV (eval_staged env exp 1)
 | UnboxE (BoxE exp) -> eval env (eval_staged env exp 1)
+| UnboxE not_box -> raise (Failure "unboxing a non-box value")
 | RunE exp -> (match eval env exp with
-  | CodeV code -> eval env code
+  | BoxV code -> eval env code
   | not_code -> raise (TypeMismatch ("CodeTy", val_type not_code)))
 | LiftE _ -> raise NotImplemented
 
@@ -93,6 +102,10 @@ and apply_binary_op binop e1 e2 = (match binop, e1, e2 with
 | _,      v1,      v2      ->
     raise (TypeMismatch (val_type (ConstV v1), val_type (ConstV v2))))
 
+(* Eval }}} *********************************************************)
+
+(* Staged computations {{{ *****************************************)
+
 and eval_staged env exp n = (match exp with
 | IdE id -> IdE id
 | ConstE e -> ConstE e
@@ -102,39 +115,43 @@ and eval_staged env exp n = (match exp with
     LetInE (Valbind (id, eval_staged env exp n), eval_staged env body n)
 | FixE (id, (Abs (arg, body))) ->
     FixE (id, (Abs (arg, eval_staged env body n)))
+
 | CondE [] -> CondE []
 | CondE ((g, b) :: r) ->
     let g' = eval_staged env g n in
     let b' = eval_staged env b n in
     let (CondE cond_rest) = eval_staged env (CondE r) n in
     CondE ((g', b') :: cond_rest)
-| CodeE exp -> CodeE exp
 
+| ValueE exp -> ValueE exp
 | BoxE exp -> BoxE (eval_staged env exp (n+1))
 | UnboxE exp ->
-    if n < 0 then raise StageException
+    if n < 1 then raise StageException
     else begin if n = 1 then
       match eval env exp with
-      | CodeV exp' -> exp'
+      | BoxV exp' -> exp'
       | ConstV c -> ConstE c
       | _ -> raise StageException
     else
       UnboxE (eval_staged env exp (n-1))
     end
-      
-| RunE exp -> RunE (eval_staged env exp n))
-(* function application {{{ *)
 
-and apply f arg = (match f with
+| RunE exp -> RunE (eval_staged env exp n))
+
+(* Staged computations }}} *****************************************)
+
+(* Function application {{{ *****************************************)
+
+and apply f arg =
+  let apply_stdfun stdfun arg = match stdfun with
+  | StdCurry (id, fn) -> ClosV (StdFun (fn arg))
+  | StdFunction (id, fn) -> fn arg
+  in
+  match f with
   | ClosV (StdFun stdfun) -> apply_stdfun stdfun arg
-  | ClosV (Closure (env, id, body)) -> 
+  | ClosV (Closure (env, id, body)) ->
       let env' = bind_value env id arg in
       eval env' body
-  | not_clos -> raise (TypeMismatch ("FunTy", val_type not_clos)))
+  | not_clos -> raise (TypeMismatch ("FunTy", val_type not_clos))
 
-and apply_stdfun stdfun arg = match stdfun with
-| StdCurry (id, fn) -> ClosV (StdFun (fn arg))
-| StdFunction (id, fn) -> fn arg
-
-(* function application }}} *)
-
+(* Function application }}} *****************************************)

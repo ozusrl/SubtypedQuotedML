@@ -1,4 +1,7 @@
-type id = string
+open Sexplib.Sexp
+open Sexplib.Conv
+
+type id = string with sexp
 
 type dec = Valbind of (id * exp)
 
@@ -17,7 +20,8 @@ and exp  =
   | FixE     of id * abs
   | CondE    of (exp * exp) list
 
-  | CodeE    of value
+  (* ValueE is returned from eval_staged when a boxed expression is unboxed *)
+  | ValueE   of value
   | BoxE     of exp
   | UnboxE   of exp
   | RunE     of exp
@@ -36,10 +40,11 @@ and fun_val =
 and value =
   | ConstV of const
   | ClosV  of fun_val
-  | CodeV  of exp
+  | BoxV  of exp
   | UnitV
+  with sexp
 
-let rec show_exp exp = "<exp>" (* TODO *)
+let show_exp exp = to_string (sexp_of_exp exp)
 
 and show_const = function
 | CInt i -> string_of_int i
@@ -49,12 +54,14 @@ and show_stdfun = function
 | StdCurry (id, _)
 | StdFunction (id, _) -> "<function: " ^ id ^ ">"
 
-and show_val = function
+and show_val value = to_string (sexp_of_value value)
+
+(*and show_val = function
 | ConstV c -> show_const c
 | ClosV (StdFun fn) -> show_stdfun fn
 | ClosV (Closure (env, id, exp)) -> "<closure>"
-| CodeV exp -> "<code: " ^ show_exp exp ^ ">"
-| UnitV -> "Unit"
+| BoxV exp -> "<box: " ^ show_exp exp ^ ">"
+| UnitV -> "Unit"*)
 
 (*type ty = TyInt | TyBool | TyUnit | TyCode | TyFun*)
 
@@ -62,5 +69,5 @@ let val_type = function
 | ConstV (CInt _) -> "TyInt"
 | ConstV (CBool _) -> "TyBool"
 | ClosV _ -> "TyFun"
-| CodeV _ -> "TyCode"
+| BoxV _ -> "TyBox"
 | UnitV -> "TyUnit"

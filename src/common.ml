@@ -20,7 +20,7 @@ and exp  =
   | FixE     of id * abs
   | CondE    of (exp * exp) list
 
-  (* ValueE is returned from eval_staged when a boxed expression is unboxed *)
+  (* ValueE is returned from eval_staged when a lifted expression is unboxed *)
   | ValueE   of value
   | BoxE     of exp
   | UnboxE   of exp
@@ -40,7 +40,7 @@ and fun_val =
 and value =
   | ConstV of const
   | ClosV  of fun_val
-  | BoxV  of exp
+  | BoxV   of exp
   | UnitV
   with sexp
 

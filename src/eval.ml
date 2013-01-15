@@ -91,7 +91,7 @@ let rec eval env = function
 | RunE exp -> (match eval env exp with
   | BoxV code -> eval env code
   | not_code -> raise (TypeMismatch ("CodeTy", val_type not_code)))
-| LiftE _ -> raise NotImplemented
+| LiftE exp -> BoxV (ValueE (eval env exp))
 
 and apply_binary_op binop e1 e2 = (match binop, e1, e2 with
 | Plus,   CInt i1, CInt i2 -> ConstV (CInt (i1 + i2))
@@ -136,7 +136,8 @@ and eval_staged env exp n = (match exp with
       UnboxE (eval_staged env exp (n-1))
     end
 
-| RunE exp -> RunE (eval_staged env exp n))
+| RunE exp -> RunE (eval_staged env exp n)
+| LiftE exp -> LiftE (eval_staged env exp n))
 
 (* Staged computations }}} *****************************************)
 

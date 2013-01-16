@@ -62,6 +62,6 @@ lst:
 
 lst_contents:
     exp { AppE (AppE (IdE "::", $1), EmpLstE) }
-  | lst_contents SEMI exp { AppE (AppE ((IdE "::"), $1), $3) }
+  | exp SEMI lst_contents { AppE (AppE ((IdE "::"), $1), $3) }
 
 %%

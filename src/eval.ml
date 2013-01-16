@@ -102,15 +102,6 @@ let rec eval env = function
   | not_code -> raise (TypeMismatch ("CodeTy", val_type not_code)))
 | LiftE exp -> BoxV (ValueE (eval env exp))
 
-and apply_binary_op binop e1 e2 = (match binop, e1, e2 with
-| Plus,   CInt i1, CInt i2 -> ConstV (CInt (i1 + i2))
-| Minus,  CInt i1, CInt i2 -> ConstV (CInt (i1 - i2))
-| Mult,   CInt i1, CInt i2 -> ConstV (CInt (i1 * i2))
-| Div,    CInt i1, CInt i2 -> ConstV (CInt (i1 / i2))
-| Equals, v1,      v2      -> ConstV (CBool (v1 = v2))
-| _,      v1,      v2      ->
-    raise (TypeMismatch (val_type (ConstV v1), val_type (ConstV v2))))
-
 (* Eval }}} *********************************************************)
 
 (* Staged computations {{{ *****************************************)

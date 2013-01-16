@@ -25,6 +25,7 @@ rule mytoken = parse
   | "run"      { RUN }
   | "in"       { IN }
   | "let"      { LET }
+  | "rec"      { REC }
   | "true"     { BOOL(true) }
   | "false"    { BOOL(false) }
   | "with"     { WITH }

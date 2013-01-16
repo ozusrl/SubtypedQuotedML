@@ -3,7 +3,7 @@
 %}
 
 %token EOF DOT FUN LP RP LB RB UNBOX RUN LET IN SEMI LT GT WITH COMMA ARROW
-%token EQ PLUS MINUS MULT DIV FIX IF THEN ELSE LIFT LBRACK RBRACK CONS
+%token EQ PLUS MINUS MULT DIV FIX IF THEN ELSE LIFT LBRACK RBRACK CONS REC
 %token <string> ID
 %token <int>    INT
 %token <bool>   BOOL
@@ -37,9 +37,13 @@ exp:
   | ID                          { IdE $1 }
   | INT                         { ConstE(CInt $1) }
   | BOOL                        { ConstE(CBool $1) }
-  | FUN ID ARROW exp            { AbsE(Abs($2, $4)) }
-  | FIX ID ID ARROW exp         { FixE($2, Abs($3,$5)) }
+  | FUN func                    { AbsE $2 }
+  | FIX ID func                 { FixE ($2, $3) }
+
   | LET dec IN exp              { LetInE($2, $4) }
+  | LET ID eqfunc IN exp        { LetInE (Valbind ($2, AbsE $3), $5) }
+  | LET REC ID eqfunc IN exp    { LetInE (Valbind ($3, FixE ($3, $4)), $6) }
+
   | exp PLUS exp                { AppE (AppE (IdE "+", $1), $3) }
   | exp MINUS exp               { AppE (AppE (IdE "-", $1), $3) }
   | exp MULT exp                { AppE (AppE (IdE "*", $1), $3) }
@@ -53,8 +57,16 @@ exp:
   | LIFT exp                    { LiftE $2 }
   | LP exp RP                   { $2 }
   | IF exp THEN exp             { CondE( [ ($2, $4) ] ) }
-  | IF exp THEN exp ELSE exp    { CondE( [ ($2, $4); ((ConstE (CBool true)), $6) ] ) }
+  | IF exp THEN exp ELSE exp    { CondE( [ ($2, $4); (ConstE (CBool true), $6) ] ) }
   | lst                         { $1 }
+
+func:
+  | ID func                     { Abs ($1, AbsE $2) }
+  | ID ARROW exp                { Abs ($1, $3) }
+
+eqfunc:
+  | ID eqfunc                   { Abs ($1, AbsE $2) }
+  | ID EQ exp                   { Abs ($1, $3) }
 
 lst:
   | LBRACK lst_contents RBRACK { $2 }

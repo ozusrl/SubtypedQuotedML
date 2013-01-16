@@ -28,13 +28,13 @@
 %%
 
 main:
-    exp SEMI { $1 }
+  | exp SEMI { $1 }
 
 dec:
-    ID EQ exp        { Valbind($1,$3) }
+  | ID EQ exp        { Valbind($1,$3) }
 
 exp:
-    ID                          { IdE $1 }
+  | ID                          { IdE $1 }
   | INT                         { ConstE(CInt $1) }
   | BOOL                        { ConstE(CBool $1) }
   | FUN ID ARROW exp            { AbsE(Abs($2, $4)) }
@@ -57,11 +57,11 @@ exp:
   | lst                         { $1 }
 
 lst:
-    LBRACK lst_contents RBRACK { $2 }
+  | LBRACK lst_contents RBRACK { $2 }
   | LBRACK RBRACK { EmpLstE }
 
 lst_contents:
-    exp { AppE (AppE (IdE "::", $1), EmpLstE) }
+  | exp { AppE (AppE (IdE "::", $1), EmpLstE) }
   | exp SEMI lst_contents { AppE (AppE ((IdE "::"), $1), $3) }
 
 %%

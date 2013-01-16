@@ -14,7 +14,7 @@ and binop = Plus | Minus | Mult | Div | Equals
 and exp  =
   | IdE      of id
   | ConstE   of const
-  | EmpLstE
+  | EmpLstE  (* [] expression *)
   | AppE     of exp * exp
   | AbsE     of abs
   | LetInE   of dec * exp
@@ -57,15 +57,6 @@ and show_stdfun = function
 | StdFunction (id, _) -> "<function: " ^ id ^ ">"
 
 and show_val value = to_string (sexp_of_value value)
-
-(*and show_val = function
-| ConstV c -> show_const c
-| ClosV (StdFun fn) -> show_stdfun fn
-| ClosV (Closure (env, id, exp)) -> "<closure>"
-| BoxV exp -> "<box: " ^ show_exp exp ^ ">"
-| UnitV -> "Unit"*)
-
-(*type ty = TyInt | TyBool | TyUnit | TyCode | TyFun*)
 
 let val_type = function
 | ConstV (CInt _) -> "TyInt"

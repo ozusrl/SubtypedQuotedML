@@ -63,6 +63,12 @@ let stdenv =
     | not_list -> raise (TypeMismatch ("TyList", val_type not_list)))))
   in
 
+  let empty_ty = ClosV (StdFun (StdFunction ("empty", function
+    | ListV [] -> ConstV (CBool true)
+    | ListV _  -> ConstV (CBool false)
+    | not_list -> raise (TypeMismatch ("TyList", val_type not_list)))))
+  in
+
   (* standard environment *)
   [ ("+", ref (mk_arith_fun "+" (+)))
   ; ("-", ref (mk_arith_fun "-" (-)))
@@ -72,6 +78,7 @@ let stdenv =
   ; ("::", ref cons)
   ; ("head", ref head_v)
   ; ("tail", ref tail_v)
+  ; ("empty", ref empty_ty)
   ]
 
 (* Mappings of OCaml function and standard environment }}} **********)

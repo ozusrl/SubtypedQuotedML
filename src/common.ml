@@ -28,7 +28,7 @@ and exp  =
   | RunE     of exp
   | LiftE    of exp
 
-and env = (id * value ref) list
+and env 'a = (id * 'a ref) list
 
 and stdfun =
   | StdCurry    of id * (value -> stdfun)
@@ -36,7 +36,7 @@ and stdfun =
 
 and fun_val =
   | StdFun  of stdfun
-  | Closure of env * id * exp
+  | Closure of value env * id * exp
 
 and value =
   | ConstV of const

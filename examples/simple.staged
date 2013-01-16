@@ -8,4 +8,22 @@ let pow_gen =
                       if n = 0 then <1>
                       else <~x * ~(pow_gen (n-1))>
       in pow_gen n
-in pow_gen
+in let cubeCode = pow_gen 3 <v>
+in let cube = run(<fun v -> ~cubeCode >)
+in cube 4 + cube 3  
+;
+
+let temp = lift 42
+in temp;
+
+let temp = < ~(lift (42 + 5)) >
+in temp;
+
+let simple = < 42 + 5 >
+in simple;
+
+let dot = fix dot lst1 -> fun lst2 ->
+  if lst1 = [] then 0
+  else (head lst1 * head lst2) + dot (tail lst1) (tail lst2)
+in dot [1;2;3] [3;4;5];
+

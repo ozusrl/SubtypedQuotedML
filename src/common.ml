@@ -14,6 +14,7 @@ and binop = Plus | Minus | Mult | Div | Equals
 and exp  =
   | IdE      of id
   | ConstE   of const
+  | EmpLstE
   | AppE     of exp * exp
   | AbsE     of abs
   | LetInE   of dec * exp
@@ -41,6 +42,7 @@ and value =
   | ConstV of const
   | ClosV  of fun_val
   | BoxV   of exp
+  | ListV  of value list
   | UnitV
   with sexp
 
@@ -68,6 +70,7 @@ and show_val value = to_string (sexp_of_value value)
 let val_type = function
 | ConstV (CInt _) -> "TyInt"
 | ConstV (CBool _) -> "TyBool"
+| ListV _ -> "TyList"
 | ClosV _ -> "TyFun"
 | BoxV _ -> "TyBox"
 | UnitV -> "TyUnit"

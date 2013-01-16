@@ -44,12 +44,20 @@ let stdenv =
   let eq = ClosV (StdFun (StdCurry ("=", fun v1 ->
     StdFunction ("=", fun v2 -> ConstV (CBool (v1 = v2))))))
   in
+  (* cons operation *)
+  let cons = ClosV (StdFun (StdCurry ("::", fun v1 ->
+    StdFunction ("::", function
+      | (ListV lst) -> ListV (v1 :: lst)
+      | not_list -> raise (TypeMismatch ("TyList", val_type not_list))))))
+  in
+
   (* standard environment *)
   [ ("+", ref (mk_arith_fun "+" (+)))
   ; ("-", ref (mk_arith_fun "-" (-)))
   ; ("*", ref (mk_arith_fun "*" ( * )))
   ; ("/", ref (mk_arith_fun "/" (/)))
   ; ("=", ref eq)
+  ; ("::", ref cons)
   ]
 
 (* Mappings of OCaml function and standard environment }}} **********)
@@ -59,6 +67,7 @@ let stdenv =
 let rec eval env = function
 | IdE id -> lookup env id
 | ConstE c -> ConstV c
+| EmpLstE -> ListV []
 
 | AppE (f, p) ->
     let f' = eval env f in
@@ -109,6 +118,7 @@ and apply_binary_op binop e1 e2 = (match binop, e1, e2 with
 and eval_staged env exp n = (match exp with
 | IdE id -> IdE id
 | ConstE e -> ConstE e
+| EmpLstE -> EmpLstE
 | AppE (f, p) -> AppE (eval_staged env f n, eval_staged env p n)
 | AbsE (Abs (id, body)) -> AbsE (Abs (id, eval_staged env body n))
 | LetInE (Valbind (id, exp), body) ->

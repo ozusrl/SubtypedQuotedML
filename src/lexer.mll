@@ -36,6 +36,7 @@ rule mytoken = parse
   | "-"        { MINUS }
   | "*"        { MULT }
   | "/"        { DIV }
+  | "::"       { CONS }
   | "if"       { IF }
   | "else"     { ELSE }
   | "then"     { THEN }

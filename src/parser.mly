@@ -3,7 +3,7 @@
 %}
 
 %token EOF DOT FUN LP RP LB RB UNBOX RUN LET IN SEMI LT GT WITH COMMA ARROW
-%token EQ PLUS MINUS MULT DIV FIX IF THEN ELSE LIFT LBRACK RBRACK
+%token EQ PLUS MINUS MULT DIV FIX IF THEN ELSE LIFT LBRACK RBRACK CONS
 %token <string> ID
 %token <int>    INT
 %token <bool>   BOOL
@@ -22,6 +22,7 @@
 %nonassoc FUN FIX LET LP LBRACK LT LB IF ID INT BOOL
 %left APP
 %nonassoc UNBOX RUN LIFT
+%nonassoc CONS /* TODO: make sure precedences are correct */
 %nonassoc DOT
 
 %%
@@ -44,6 +45,7 @@ exp:
   | exp MULT exp                { AppE (AppE (IdE "*", $1), $3) }
   | exp DIV exp                 { AppE (AppE (IdE "/", $1), $3) }
   | exp EQ exp                  { AppE (AppE (IdE "=", $1), $3) }
+  | exp CONS exp                { AppE (AppE (IdE "::", $1), $3) }
   | exp exp %prec APP           { AppE($1,$2) }
   | LT exp GT                   { BoxE $2 }
   | UNBOX exp                   { UnboxE $2 }
@@ -52,5 +54,14 @@ exp:
   | LP exp RP                   { $2 }
   | IF exp THEN exp             { CondE( [ ($2, $4) ] ) }
   | IF exp THEN exp ELSE exp    { CondE( [ ($2, $4); ((ConstE (CBool true)), $6) ] ) }
+  | lst                         { $1 }
+
+lst:
+    LBRACK lst_contents RBRACK { $2 }
+  | LBRACK RBRACK { EmpLstE }
+
+lst_contents:
+    exp { AppE (AppE (IdE "::", $1), EmpLstE) }
+  | lst_contents SEMI exp { AppE (AppE ((IdE "::"), $1), $3) }
 
 %%

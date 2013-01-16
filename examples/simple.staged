@@ -1,0 +1,11 @@
+let fac = fix fac n -> if n = 0 then 1 else n * fac (n-1) in fac 5;
+let fac_staged = fix fac n -> if n = 0 then <1> else <~n * ~(fac (n-1))> in fac_staged 4;
+
+let pow_gen =
+  fun n ->
+    fun x ->
+      let pow_gen = fix pow_gen n ->
+                      if n = 0 then <1>
+                      else <~x * ~(pow_gen (n-1))>
+      in pow_gen n
+in pow_gen

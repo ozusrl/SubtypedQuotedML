@@ -44,7 +44,7 @@ let stdenv =
   let eq = ClosV (StdFun (StdCurry ("=", fun v1 ->
     StdFunction ("=", fun v2 -> ConstV (CBool (v1 = v2))))))
   in
-  (* cons operation *)
+  (* list operations *)
   let cons = ClosV (StdFun (StdCurry ("::", fun v1 ->
     StdFunction ("::", function
       | ListV lst -> ListV (v1 :: lst)
@@ -102,7 +102,6 @@ let rec eval env = function
     set_value env' id clos; clos
 
 | CondE [] -> UnitV
-(* FIXME: type errors, unit value *)
 | CondE ((g, e) :: r) -> (match eval env g with
   | ConstV (CBool true) -> eval env e
   | _ -> eval env (CondE r))

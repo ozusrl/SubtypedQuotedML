@@ -47,8 +47,20 @@ let stdenv =
   (* cons operation *)
   let cons = ClosV (StdFun (StdCurry ("::", fun v1 ->
     StdFunction ("::", function
-      | (ListV lst) -> ListV (v1 :: lst)
+      | ListV lst -> ListV (v1 :: lst)
       | not_list -> raise (TypeMismatch ("TyList", val_type not_list))))))
+  in
+
+  let head_v = ClosV (StdFun (StdFunction ("head", function
+    | ListV (h :: t) -> h
+    | ListV [] -> raise (Failure "head of empty list")
+    | not_list -> raise (TypeMismatch ("TyList", val_type not_list)))))
+  in
+
+  let tail_v = ClosV (StdFun (StdFunction ("tail", function
+    | ListV (h :: t) -> ListV t
+    | ListV [] -> raise (Failure "tail of empty list")
+    | not_list -> raise (TypeMismatch ("TyList", val_type not_list)))))
   in
 
   (* standard environment *)
@@ -58,6 +70,8 @@ let stdenv =
   ; ("/", ref (mk_arith_fun "/" (/)))
   ; ("=", ref eq)
   ; ("::", ref cons)
+  ; ("head", ref head_v)
+  ; ("tail", ref tail_v)
   ]
 
 (* Mappings of OCaml function and standard environment }}} **********)

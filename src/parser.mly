@@ -2,7 +2,7 @@
   open Common
 %}
 
-%token EOF DOT FUN LP RP LB RB UNBOX RUN LET IN SEMI LT GT WITH COMMA ARROW
+%token EOF DOT FUN LP RP LB RB UNBOX RUN LET IN SEMI LT GT COMMA ARROW
 %token EQ PLUS MINUS MULT DIV FIX IF THEN ELSE LIFT LBRACK RBRACK CONS REC
 %token <string> ID
 %token <int>    INT
@@ -14,15 +14,14 @@
 
 %right THEN ELSE
 %nonassoc IN ARROW
+%nonassoc CONS
 %right COMMA
 %nonassoc EQ
-%left DIV MULT
 %left PLUS MINUS
-%nonassoc WITH
+%left DIV MULT
 %nonassoc FUN FIX LET LP LBRACK LT LB IF ID INT BOOL
 %left APP
 %nonassoc UNBOX RUN LIFT
-%nonassoc CONS /* TODO: make sure precedences are correct */
 %nonassoc DOT
 
 %%

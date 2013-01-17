@@ -26,7 +26,7 @@ and record =
 and concrete_record = (string * ty) list
 and row_record      = concrete_record * int
 
-let int_ty = ConstTy "int"
+let int_ty  = ConstTy "int"
 let bool_ty = ConstTy "bool"
 
 let last_tyvar = ref 0
@@ -35,8 +35,9 @@ let fresh_var _ =
   last_tyvar := tyvar + 1; tyvar
 let reset_last_tyvar _ = last_tyvar := 0
 
-(* return substitution function from substitution list
- * only variables ( TyVar, FieldVar, RRec's row variable ) can be subtstituted *)
+(* return substitution function from substitution list (list of type var,
+ * substitution pairs). only variables (TyVar, FieldVar, RRec's row variable)
+ * can be subtstituted *)
 let rec getsub = function
 | [] -> (function
   | TV n -> TyVar n
@@ -48,7 +49,7 @@ let rec getsub = function
     (fun v -> if v = EV (i) then p else getsub cs v)
 | _ -> failwith "is not in substitution form lol."
 
-(* apply substitution to type scheme *)
+(* substitution applications *{{{***********************************)
 let rec apply_sub_ty sub = function
 | BottomTy -> BottomTy
 | ConstTy t -> ConstTy t
@@ -83,26 +84,33 @@ and apply_sub_env sub = function
   | _ -> failwith "no sub lol")
 
 and apply_sub_env_lst sub = List.map (apply_sub_env sub)
+(* substitution applications *}}}***********************************)
 
-and add var t = function
-| CRec ce -> CRec (add_to_list var t ce)
-| RRec (ce, i) -> RRec (add_to_list var t ce, i)
+(* add variable with type t to env *)
+and add var t env = 
+  let rec add_to_list var t = function
+  | [] -> [(var, t)]
+  | (var', t') :: rest when var = var' -> (var, t) :: rest
+  | (var', t') :: rest -> (var', t') :: (add_to_list var t rest)
+  in
+  match env with
+  | CRec ce -> CRec (add_to_list var t ce)
+  | RRec (ce, i) -> RRec (add_to_list var t ce, i)
 
-and add_to_list var t = function
-| [] -> [(var, t)]
-| (var', t') :: rest when var = var' -> (var, t) :: rest
-| (var', t') :: rest -> (var', t') :: (add_to_list var t rest)
-
+(* instantiate type scheme *)
 and instantiate env =
   let inst (tt:ty) = match tt with
   | TyScheme (vars, ty) ->
-      let asdf = function
+      (* get substitution of quantified type variable as a pair *)
+      let mk_sub = function
       | TV i -> (TyVar i, TyVar (fresh_var ()))
       | FV i -> (FieldVar i, FieldVar (fresh_var ()))
       | EV i -> (RecordTy (RRec ([], i)), RecordTy (RRec ([], fresh_var ())))
       in
-      let bindings = List.map asdf vars in
-      apply_sub_ty (getsub bindings) ty
+      (* .. make substitution functions for each type variable *)
+      let substs = List.map mk_sub vars in
+      (* .. and apply it to type scheme to get env \w instantiated types *)
+      apply_sub_ty (getsub substs) ty
   | _ -> tt
   in
   match env with

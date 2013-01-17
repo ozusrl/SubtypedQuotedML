@@ -48,14 +48,6 @@ and value =
 
 let show_exp exp = to_string (sexp_of_exp exp)
 
-and show_const = function
-| CInt i -> string_of_int i
-| CBool b -> string_of_bool b
-
-and show_stdfun = function
-| StdCurry (id, _)
-| StdFunction (id, _) -> "<function: " ^ id ^ ">"
-
 and show_val value = to_string (sexp_of_value value)
 
 let val_type = function

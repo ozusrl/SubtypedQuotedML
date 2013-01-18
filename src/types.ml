@@ -1,23 +1,24 @@
 open Common
-open Env
+open Sexplib.Sexp
+open Sexplib.Conv
 
 type ty =
   | BottomTy
   | ConstTy  of id
   | ArrowTy  of ty * ty
-  
-  | TyVar    of int
   | BoxTy    of record * ty
-  | TyScmEnv of record * record
-  | FieldVar of int
 
-  | TyScheme of type_var list * ty
+  | FieldVar of int
+  | TyVar    of int
+
+  | TyScheme of qual_type_var list * ty
   | RecordTy of record
 
-and type_var =
-  | TV of int (* type variable ? *)
-  | EV of int (* type environment variable ? *)
-  | FV of int (* field variable ? *)
+(* universally quantified type variables *)
+and qual_type_var =
+  | TV of int (* type variable *)
+  | EV of int (* type environment variable (used for rows) TODO: bundan emin ol *)
+  | FV of int (* field variable *)
 
 and record =
   | CRec of concrete_record
@@ -25,6 +26,9 @@ and record =
 
 and concrete_record = (string * ty) list
 and row_record      = concrete_record * int
+with sexp
+
+let show_type ty = to_string (sexp_of_ty ty)
 
 let int_ty  = ConstTy "int"
 let bool_ty = ConstTy "bool"
@@ -34,6 +38,16 @@ let fresh_var _ =
   let tyvar = !last_tyvar in
   last_tyvar := tyvar + 1; tyvar
 let reset_last_tyvar _ = last_tyvar := 0
+let fresh_tyvar _ = TyVar (fresh_var ())
+
+let test_env =
+  [ CRec [ ("+", ArrowTy (int_ty, ArrowTy (int_ty, int_ty)))
+         ; let argvar = fresh_var () in
+           ("=", TyScheme ([TV argvar], (ArrowTy (TyVar argvar, ArrowTy (TyVar argvar, bool_ty)))))
+         ; let argvar = fresh_var () in
+           ("id", TyScheme ([TV argvar], (ArrowTy (TyVar argvar, TyVar argvar))))
+         ]
+  ]
 
 (* return substitution function from substitution list (list of type var,
  * substitution pairs). only variables (TyVar, FieldVar, RRec's row variable)
@@ -47,7 +61,8 @@ let rec getsub = function
 | (FieldVar i, ty) :: cs -> (fun v -> if v = FV i then ty else getsub cs v)
 | (RecordTy (RRec ([], i)), p) :: cs ->
     (fun v -> if v = EV (i) then p else getsub cs v)
-| _ -> failwith "is not in substitution form lol."
+| ((ty1, ty2) :: _) -> failwith ("getsub: " ^ show_type ty1 ^ " --- " ^ show_type ty2 ^ " is not in substitution form lol.")
+(*| ((ty1, ty2) :: _) -> failwith "getsub"*)
 
 (* substitution applications *{{{***********************************)
 let rec apply_sub_ty sub = function
@@ -56,7 +71,6 @@ let rec apply_sub_ty sub = function
 | ArrowTy (t1, t2) -> ArrowTy (apply_sub_ty sub t1, apply_sub_ty sub t2)
 | TyVar i -> sub (TV i)
 | BoxTy (env, ty) -> BoxTy (apply_sub_env sub env, apply_sub_ty sub ty)
-| TyScmEnv (env1, env2) -> TyScmEnv (apply_sub_env sub env1, apply_sub_env sub env2)
 | FieldVar i -> sub (FV i)
 | TyScheme (vars, ty) ->
     let mask_subst =
@@ -84,6 +98,10 @@ and apply_sub_env sub = function
   | _ -> failwith "no sub lol")
 
 and apply_sub_env_lst sub = List.map (apply_sub_env sub)
+
+and compose sub1 sub2 =
+  fun v -> apply_sub_ty sub2 (sub1 v)
+
 (* substitution applications *}}}************************************)
 
 
@@ -96,10 +114,9 @@ and add_to_list var ty = function
 | (var', ty') :: rest -> (var', ty') :: (add_to_list var ty rest)
 
 (* add variable with type ty to record *)
-and add_rec var ty env = 
-  match env with
-  | CRec ce -> CRec (add_to_list var ty ce)
-  | RRec (ce, i) -> RRec (add_to_list var ty ce, i)
+and add_rec var ty = function
+| CRec ce -> CRec (add_to_list var ty ce)
+| RRec (ce, i) -> RRec (add_to_list var ty ce, i)
 
 (* add variable with type ty to list of records (type scheme envs)
  * return (subt, new record) pair. subst value is required when type is added to
@@ -153,21 +170,21 @@ and unify_concrete fields1 fields2 =
 (* normalization of row variables }}} ---------------------------------------*)
 
 (* instantiate type scheme *)
-and instantiate env =
+and instantiate scm =
   let inst (tt:ty) = match tt with
   | TyScheme (vars, ty) ->
       (* get substitution of quantified type variable as a pair *)
       let mk_sub = function
-      | TV i -> (TyVar i, TyVar (fresh_var ()))
+      | TV i -> (TyVar i, fresh_tyvar ())
       | FV i -> (FieldVar i, FieldVar (fresh_var ()))
       | EV i -> (RecordTy (RRec ([], i)), RecordTy (RRec ([], fresh_var ())))
       in
       (* .. make substitution functions for each type variable *)
       let substs = List.map mk_sub vars in
-      (* .. and apply it to type scheme to get env \w instantiated types *)
+      (* .. and apply it to type scheme to get scm \w instantiated types *)
       apply_sub_ty (getsub substs) ty
   | _ -> tt
   in
-  match env with
+  match scm with
   | CRec ce -> CRec (List.map (fun (x, tt) -> (x, inst tt)) ce)
   | RRec (ce, n) -> RRec (List.map (fun (x, tt) -> (x, inst tt)) ce, n)

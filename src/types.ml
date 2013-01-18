@@ -75,27 +75,64 @@ and apply_sub_env sub = function
 | CRec ce -> CRec (apply_sub_lst sub ce)
 | RRec (ce, n) -> (match sub (EV n) with
   | RecordTy (CRec ce') ->
-      List.fold_left (fun y (x, t) -> add x t y)
+      List.fold_left (fun y (x, t) -> add_rec x t y)
         (CRec ce') (apply_sub_lst sub ce)
   | RecordTy (RRec (ce', v)) ->
-      let CRec newce = List.fold_left (fun y (x, t) -> add x t y) (CRec ce')
+      let CRec newce = List.fold_left (fun y (x, t) -> add_rec x t y) (CRec ce')
                           (apply_sub_lst sub ce)
       in RRec (newce, v)
   | _ -> failwith "no sub lol")
 
 and apply_sub_env_lst sub = List.map (apply_sub_env sub)
-(* substitution applications *}}}***********************************)
+(* substitution applications *}}}************************************)
 
-(* add variable with type t to env *)
-and add var t env = 
-  let rec add_to_list var t = function
-  | [] -> [(var, t)]
-  | (var', t') :: rest when var = var' -> (var, t) :: rest
-  | (var', t') :: rest -> (var', t') :: (add_to_list var t rest)
-  in
+
+(* extension of type environments {{{ *******************************)
+
+(* add variable with type ty to list of (variable, type) pairs *)
+and add_to_list var ty = function
+| [] -> [(var, ty)]
+| (var', ty') :: rest when var = var' -> (var, ty) :: rest
+| (var', ty') :: rest -> (var', ty') :: (add_to_list var ty rest)
+
+(* add variable with type ty to record *)
+and add_rec var ty env = 
   match env with
-  | CRec ce -> CRec (add_to_list var t ce)
-  | RRec (ce, i) -> RRec (add_to_list var t ce, i)
+  | CRec ce -> CRec (add_to_list var ty ce)
+  | RRec (ce, i) -> RRec (add_to_list var ty ce, i)
+
+(* add variable with type ty to list of records (type scheme envs)
+ * return (subt, new record) pair. subst value is required when type is added to
+ * a record with row variable (because later we need to unify that row variable
+ * with substitution generated here to get required type information) *)
+and add var ty = function
+| env :: rest -> (match env with
+  | CRec (ce) ->
+      (* type environment doesn't have row variable,
+       * search and replace is not necessary since just adding to head
+       * position has the same effect FIXME bundan emin ol *)
+      (getsub [], (add_rec var ty env) :: rest)
+  | RRec (ce, row) ->
+      if List.exists (fun (var', _) -> var = var') ce then
+        (* concrete environment already has the var, just add new value *)
+        (getsub [], (add_rec var ty env) :: rest)
+      else
+        (* concrete environment doesn't have the `var`, we need to add a
+         * constraint to make sure row variable will be unified with a type
+         * environment that has the `var` with correct type(`ty`) *)
+        let new_row_var = fresh_var () in
+        let new_row_sub = getsub
+          [ ( RecordTy (RRec ([], row))
+            , RecordTy (RRec ([(var, FieldVar (fresh_var ()))], new_row_var))) ]
+        in
+        (* TODO: bu kismi anla ve dogru calistigindan emin ol *)
+        ( new_row_sub
+        , RRec (apply_sub_lst new_row_sub (add_to_list var ty ce), new_row_var)
+            :: (apply_sub_env_lst new_row_sub rest)))
+  | [] -> failwith "env list cannot be empty lol"
+
+(* extension of type environments }}} *******************************)
+
 
 (* instantiate type scheme *)
 and instantiate env =

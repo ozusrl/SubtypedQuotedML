@@ -133,6 +133,24 @@ and add var ty = function
 
 (* extension of type environments }}} *******************************)
 
+(* normalization of row variables {{{ ---------------------------------------*)
+
+
+and esort = List.stable_sort (fun (x, a) (y, b) -> compare x y)
+
+and unify_concrete fields1 fields2 =
+  let rec aux slist l1 l2 = (match l1, l2 with
+  | [], [] -> slist
+  | [], (var, ty) :: l2' -> aux ((ty, BottomTy) :: slist) l1 l2'
+  | (var, ty) :: l1', [] -> aux ((ty, BottomTy) :: slist) l1' l2
+  | (var1, ty1) :: l1', (var2, ty2) :: l2' -> (match compare var1 var2 with
+    | -1 -> aux ((var1, BottomTy) :: slist) l1' l2
+    | 0  -> aux ((ty1, ty2) :: slist) l1' l2'
+    | 1  -> aux ((ty2, BottomTy) :: slist) l1 l2'))
+  in
+  aux [] (esort fields1) (esort fields2)
+
+(* normalization of row variables }}} ---------------------------------------*)
 
 (* instantiate type scheme *)
 and instantiate env =

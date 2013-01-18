@@ -6,8 +6,16 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
     Printf.printf "Parsed expr: %s\n\n" (show_exp exp);
 
     try
+      (* infer type and print *)
+      let exp_ty = Types.fresh_tyvar () in
+      let subs = Types.infer Types.test_env exp exp_ty in
+      let ty = Types.apply_sub_ty subs exp_ty in
+      Printf.printf "Type: %s\n" (Types.show_type ty);
+
+      (* eval value and print *)
       let value = Eval.eval Eval.stdenv exp in
       Printf.printf "Return value: %s\n\n\n" (show_val value);
+
       (* run only one expression when in repl *)
       if not repl then parse_and_eval_exprs lexbuf
     with Failure s -> print_endline ("Unexpected error occured: " ^ s)

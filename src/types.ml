@@ -99,6 +99,10 @@ and apply_sub_env sub = function
 
 and apply_sub_env_lst sub = List.map (apply_sub_env sub)
 
+and apply_sub_const f (ty1, ty2) = (apply_sub_ty f ty1, apply_sub_ty f ty2)
+
+and apply_sub_const_lst sub = List.map (apply_sub_const sub)
+
 and compose sub1 sub2 =
   fun v -> apply_sub_ty sub2 (sub1 v)
 
@@ -150,24 +154,114 @@ and add var ty = function
 
 (* extension of type environments }}} *******************************)
 
+
 (* normalization of row variables {{{ ---------------------------------------*)
 
 
-and esort = List.stable_sort (fun (x, a) (y, b) -> compare x y)
+and esort (fields:(string * ty) list) = List.stable_sort
+  (fun (x, a) (y, b) -> compare x y) fields
 
+(* return a substitutions  `(ty * ty) list` from concrete record field lists
+ * `(string * ty) list` *)
+
+(*TODO: why adding bottom types ? *)
 and unify_concrete fields1 fields2 =
-  let rec aux slist l1 l2 = (match l1, l2 with
+  let rec aux slist l1 l2 = match l1, l2 with
   | [], [] -> slist
-  | [], (var, ty) :: l2' -> aux ((ty, BottomTy) :: slist) l1 l2'
-  | (var, ty) :: l1', [] -> aux ((ty, BottomTy) :: slist) l1' l2
+  | [], (_, ty) :: l2' -> aux ((ty, BottomTy) :: slist) l1 l2'
+  | (_, ty) :: l1', [] -> aux ((ty, BottomTy) :: slist) l1' l2
   | (var1, ty1) :: l1', (var2, ty2) :: l2' -> (match compare var1 var2 with
-    | -1 -> aux ((var1, BottomTy) :: slist) l1' l2
-    | 0  -> aux ((ty1, ty2) :: slist) l1' l2'
-    | 1  -> aux ((ty2, BottomTy) :: slist) l1 l2'))
+    | -1 -> aux ((ty1, BottomTy) :: slist)  l1' l2
+    | 0  -> aux ((ty1, ty2) :: slist)       l1' l2'
+    | 1  -> aux ((ty2, BottomTy) :: slist)  l1 l2')
   in
   aux [] (esort fields1) (esort fields2)
 
+and unify_asymmetric fields1 fields2 = (* assume fields2 is bigger *)
+  let rec aux slist row l1 l2 = match l1, l2 with
+  | [], [] -> (slist, row)
+  | [], (var, ty) :: l2' -> aux slist ((var, ty) :: row) l1 l2'
+  | (var, ty) :: l1', [] -> aux slist ((var, BottomTy) :: row) l1' l2
+  | (var1, ty1) :: l1', (var2, ty2) :: l2' -> (match compare var1 var2 with
+    | -1 -> aux ((ty1, BottomTy) :: slist) row l1' l2
+    | 0  -> aux ((ty1, ty2) :: slist) row l1' l2'
+    | 1  -> aux slist ((var2, ty2) :: row) l1 l2')
+  in aux [] [] (esort fields1) (esort fields2)
+
+and unify_symmetric fields1 fields2 =
+  let rec aux slist row1 row2 l1 l2 = match l1, l2 with
+  | [], [] -> (slist, row1, row2)
+  | [], (var, ty) :: l2' ->
+      aux slist ((var, ty) :: row1) ((var, BottomTy) :: row2) l1 l2'
+  | (var, ty) :: l1', [] ->
+      aux slist ((var, BottomTy) :: row1) ((var, ty) :: row2) l1' l2
+  | (var1, ty1) :: l1', (var2, ty2) :: l2' -> (match compare var1 var2 with
+    | -1 -> aux slist ((var1, BottomTy) :: row1) ((var1, ty1) :: row2) l1' l2
+    | 0  -> aux ((ty1, ty2) :: slist)
+              ((var1, BottomTy) :: row1)
+              ((var2, BottomTy) :: row2)
+              l1' l2'
+    | 1  -> aux slist ((var2, ty2) :: row1) ((var2, BottomTy) :: row1) l1 l2')
+  in
+  aux [] [] [] (esort fields1) (esort fields2)
+
+  let rec unify_symmetric_one_row fields1 fields2 =
+    let rec aux slist l1 l2 = match l1, l2 with
+    | [], [] -> slist
+    | (var1, ty1) :: l1', (var2, ty2) :: l2' when var1 = var2 ->
+        aux ((ty1, ty2) :: slist) l1' l2'
+    | _ -> failwith "failed in unify_symmetric_one_row"
+    in 
+    aux [] (esort fields1) (esort fields2)
+
+
 (* normalization of row variables }}} ---------------------------------------*)
+
+and normalize = function
+| [] -> []
+| (ty1, ty2) :: rest when ty1 = ty2 -> normalize rest
+| (ty1, ty2) :: rest -> (match ty1, ty2 with
+  | FieldVar i, ty
+  | ty, FieldVar i -> eliminate (FV i) ty rest
+
+  | BottomTy, ty
+  | ty, BottomTy -> failwith "conflict in constraint"
+
+  | TyVar i, ty
+  | ty, TyVar i -> eliminate (TV i) ty rest
+
+  | ArrowTy (l1, r1), ArrowTy (l2, r2) ->
+      normalize ((l1, l2) :: (r1, r2) :: rest)
+
+  | BoxTy (env1, box1), BoxTy (env2, box2) ->
+      normalize ((box1, box2) :: (RecordTy env1, RecordTy env2) :: rest)
+
+  | RecordTy env1, RecordTy env2 -> (match env1, env2 with
+    | RRec ([], i), _ -> eliminate (EV i) ty2 rest
+    | _, RRec ([], i) -> eliminate (EV i) ty1 rest
+    | RRec (fields1, i1), RRec (fields2, i2) ->
+        if i1 = i2 then
+          let cl = unify_symmetric_one_row fields1 fields2 in
+          normalize (cl @ rest)
+        else
+          let (cl, row1, row2) = unify_symmetric fields1 fields2 in
+          let new_row = fresh_var () in
+          normalize ((RecordTy (RRec ([], i1)), RecordTy (RRec (row1, new_row)))
+            :: (RecordTy (RRec ([], i2)), RecordTy (RRec (row2, new_row)))
+            :: (cl @ rest))
+    | RRec (env1, i), CRec (env2) ->
+        let cl, row = unify_asymmetric env1 env2 in
+        normalize ((RecordTy (RRec ([], i)), RecordTy (CRec row)) :: (cl @
+        rest))
+    | CRec (env1), CRec (env2) -> normalize ((unify_concrete env1 env2) @ rest)
+    | CRec (env1), RRec (env2, i) -> normalize ((ty2, ty1) :: rest)))
+
+and eliminate ty1 ty2 (substs:(ty * ty) list) =
+  let substs' =
+    apply_sub_const_lst (fun m -> if m = ty1 then ty2 else getsub [] m) substs 
+  in
+  let scl = normalize substs' in
+  ((getsub [] ty1, apply_sub_ty (getsub scl) ty2) :: scl)
 
 (* instantiate type scheme *)
 and instantiate scm =
@@ -188,3 +282,51 @@ and instantiate scm =
   match scm with
   | CRec ce -> CRec (List.map (fun (x, tt) -> (x, inst tt)) ce)
   | RRec (ce, n) -> RRec (List.map (fun (x, tt) -> (x, inst tt)) ce, n)
+
+
+let rec infer envs exp tyvar = match envs with
+| [] -> failwith "infer: at least one environment needed."
+| env :: rest -> (match exp with
+  | ConstE (CInt _) -> getsub [(tyvar, int_ty)]
+  | ConstE (CBool _) -> getsub [(tyvar, bool_ty)]
+
+  | IdE id -> getsub [( RecordTy (RRec ([id, tyvar], fresh_var ()))
+                      , RecordTy (instantiate env))]
+
+  (*| IdE id -> getsub [( RecordTy (instantiate env)
+                      , RecordTy (RRec ([id, tyvar], fresh_var ())))]*)
+
+  | AppE (e1, e2) ->
+      let new_tyvar = fresh_tyvar () in
+      let s1 = infer envs e1 (ArrowTy (new_tyvar, tyvar)) in
+      let s2 = infer (apply_sub_env_lst s1 envs) e2 (apply_sub_ty s1 new_tyvar) in
+      compose s2 s1
+
+  | AbsE (Abs (id, body)) -> 
+      let fresh1 = fresh_tyvar () in
+      let fresh2 = fresh_tyvar () in
+      let (sub0, envs') = add id fresh1 envs in
+      let sub1 = infer envs' body (apply_sub_ty sub0 fresh2) in
+      let sub2 = getsub [( apply_sub_ty sub1 tyvar
+                         , apply_sub_ty sub1 (ArrowTy (fresh1, fresh2)))]
+      in
+      compose sub2 (compose sub1 sub0)
+
+  (*| BoxE e ->
+      let fresh1 = fresh_tyvar () in
+      let newenv = RRec ([], fresh_var ()) in
+      let sub1 = infer (newenv :: envs) exp fresh1 in
+      let sub2 = getsub [( apply_sub_ty sub1 tyvar
+                         , apply_sub_ty sub1 (BoxTy (newenv, fresh1)))]
+      in
+      compose sub2 sub1
+
+  | UnboxE e ->
+      let newenv = RRec ([], fresh_var ()) in
+      let sub1 = infer rest exp (BoxTy (newenv, tyvar)) in
+      let sub2 = getsub [( RecordTy (apply_sub_env sub1 newenv)
+                         , RecordTy (apply_sub_env sub1 (instantiate env)))]
+      in
+      compose sub2 sub1*)
+)
+

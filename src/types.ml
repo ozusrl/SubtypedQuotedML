@@ -1,6 +1,6 @@
 open Common
-open Sexplib.Sexp
-open Sexplib.Conv
+(*open Sexplib.Sexp*)
+(*open Sexplib.Conv*)
 
 type ty =
   | BottomTy
@@ -26,9 +26,9 @@ and record =
 
 and concrete_record = (string * ty) list
 and row_record      = concrete_record * int
-with sexp
+(*with sexp*)
 
-let show_type ty = to_string (sexp_of_ty ty)
+(*let show_type ty = to_string (sexp_of_ty ty)*)
 
 let int_ty  = ConstTy "int"
 let bool_ty = ConstTy "bool"
@@ -61,8 +61,8 @@ let rec getsub = function
 | (FieldVar i, ty) :: cs -> (fun v -> if v = FV i then ty else getsub cs v)
 | (RecordTy (RRec ([], i)), p) :: cs ->
     (fun v -> if v = EV (i) then p else getsub cs v)
-| ((ty1, ty2) :: _) -> failwith ("getsub: " ^ show_type ty1 ^ " --- " ^ show_type ty2 ^ " is not in substitution form lol.")
-(*| ((ty1, ty2) :: _) -> failwith "getsub"*)
+(*| ((ty1, ty2) :: _) -> failwith ("getsub: " ^ show_type ty1 ^ " --- " ^ show_type ty2 ^ " is not in substitution form lol.")*)
+| ((ty1, ty2) :: _) -> failwith "getsub"
 
 (* substitution applications *{{{***********************************)
 let rec apply_sub_ty sub = function

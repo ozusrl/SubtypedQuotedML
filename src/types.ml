@@ -14,6 +14,8 @@ type ty =
   | TyScheme of qtype_val list * ty
   | RecordTy of record
 
+  | ListTy of ty
+
 (* universally quantified type variables *)
 and qtype_val =
   | TV of int (* type variable *)
@@ -42,13 +44,25 @@ let reset_last_tyvar _ = last_tyvar := 0
 let fresh_tyvar _ = TyVar (fresh_var ())
 
 let (test_env:record list) =
-  [ CRec [ ("+", ArrowTy (int_ty, ArrowTy (int_ty, int_ty)))
-         ; let argvar = fresh_var () in
-           ("=", TyScheme ([TV argvar], (ArrowTy (TyVar argvar, ArrowTy (TyVar argvar, bool_ty)))))
-         ; let argvar = fresh_var () in
-           ("id", TyScheme ([TV argvar], (ArrowTy (TyVar argvar, TyVar argvar))))
-         ]
-  ]
+  let eq =
+    let argvar = fresh_var () in
+    ("=", TyScheme ( [TV argvar] , ArrowTy ( TyVar argvar , ArrowTy (TyVar argvar, bool_ty))))
+  in
+
+  let id =
+    let argvar = fresh_var () in
+    ("id", TyScheme ([TV argvar], ArrowTy (TyVar argvar, TyVar argvar)))
+  in
+
+  let cons =
+    let argvar = fresh_var () in
+    ("::", TyScheme ([TV argvar],
+      ArrowTy ( TyVar argvar
+              , ArrowTy ( ListTy (TyVar argvar)
+                        , ListTy (TyVar argvar)))))
+  in
+
+  [ CRec [ ("+", ArrowTy (int_ty, ArrowTy (int_ty, int_ty))); id; eq; cons ] ]
 
 (* return substitution function from substitution list (list of type var,
  * substitution pairs). only variables (TyVar, FieldVar, RRec's row variable)
@@ -75,13 +89,14 @@ let rec apply_sub_ty (sub : subst) : ty -> ty  = function
 | FieldVar i -> sub (FV i)
 | TyScheme (vars, ty) ->
     let mask_subst =
-      let make_new_sub newsub var = 
+      let make_new_sub newsub var =
         fun v -> if v = var then getsub [] v else newsub v
       in
       List.fold_left make_new_sub
     in
     TyScheme (vars, apply_sub_ty (mask_subst sub vars) ty)
 | RecordTy env -> RecordTy (apply_sub_env sub env)
+| ListTy t -> ListTy (apply_sub_ty sub t)
 
 and apply_sub_lst (sub : subst) (lst : (id * ty) list) =
   List.map (fun (var, ty) -> (var, apply_sub_ty sub ty)) lst
@@ -196,7 +211,7 @@ and unify_asymmetric (fields1 : (id * ty) list) (fields2 : (id * ty) list)
     | _ -> failwith"")
   in aux [] [] (esort fields1) (esort fields2)
 
-and unify_symmetric (fields1 : (id * ty) list) (fields2 : (id * ty) list) 
+and unify_symmetric (fields1 : (id * ty) list) (fields2 : (id * ty) list)
     : ((ty * ty) list * (id * ty) list * (id * ty) list) =
   let rec aux slist row1 row2 l1 l2 = match l1, l2 with
   | [], [] -> (slist, row1, row2)
@@ -216,13 +231,13 @@ and unify_symmetric (fields1 : (id * ty) list) (fields2 : (id * ty) list)
   aux [] [] [] (esort fields1) (esort fields2)
 
 and unify_symmetric_one_row (fields1 : (id * ty) list) (fields2 : (id * ty) list)
-    : (ty * ty) list = 
+    : (ty * ty) list =
   let rec aux slist l1 l2 = match l1, l2 with
   | [], [] -> slist
   | (var1, ty1) :: l1', (var2, ty2) :: l2' when var1 = var2 ->
       aux ((ty1, ty2) :: slist) l1' l2'
   | _ -> failwith "failed in unify_symmetric_one_row"
-  in 
+  in
   aux [] (esort fields1) (esort fields2)
 
 
@@ -231,7 +246,9 @@ and unify_symmetric_one_row (fields1 : (id * ty) list) (fields2 : (id * ty) list
 and normalize : (ty * ty) list -> (ty * ty) list = function
 | [] -> []
 | (ty1, ty2) :: rest when ty1 = ty2 -> normalize rest
-| (ty1, ty2) :: rest -> (match ty1, ty2 with
+| (ty1, ty2) :: rest ->
+    Printf.printf "normalizing %s with %s.\n" (show_type ty1) (show_type ty2);
+    (match ty1, ty2 with
   | FieldVar i, ty
   | ty, FieldVar i -> eliminate (FV i) ty rest
 
@@ -271,7 +288,7 @@ and normalize : (ty * ty) list -> (ty * ty) list = function
 and eliminate (var : qtype_val) (ty : ty) (substs : (ty * ty) list)
     : (ty * ty) list =
   let substs' =
-    apply_sub_const_lst (fun m -> if m = var then ty else getsub [] m) substs 
+    apply_sub_const_lst (fun m -> if m = var then ty else getsub [] m) substs
   in
   let scl = normalize substs' in
   ((getsub [] var, apply_sub_ty (getsub scl) ty) :: scl)
@@ -302,7 +319,8 @@ let unify (eqs : (ty * ty) list) : qtype_val -> ty =
 
 let rec generalize (ty : ty) (elst : record list) : ty =
   let rec contains (lst : qtype_val list) (x : qtype_val) : bool =
-    List.exists (fun a -> a = x) lst in
+    List.exists (fun a -> a = x) lst
+  in
 
   let rec collapse : qtype_val list -> qtype_val list = function
   | [] -> []
@@ -325,6 +343,8 @@ let rec generalize (ty : ty) (elst : record list) : ty =
   | TyVar i -> if contains acc (TV i) then acc else (TV i) :: acc
   | TyScheme (xs, ty) -> (remove xs (names ty [])) @ acc
   | RecordTy env -> env_names env acc
+  | ListTy ty -> names ty acc
+
   and env_names (env : record) (acc : qtype_val list)
       : qtype_val list = match env with
   | CRec ce -> List.fold_left (fun y (x, t) -> names t y) acc ce
@@ -333,7 +353,9 @@ let rec generalize (ty : ty) (elst : record list) : ty =
   in
 
   let fvs : qtype_val list = names ty [] in
-  let fv_envs : qtype_val list = List.fold_left (fun ys y -> (env_names y []) @ ys) [] elst in
+  let fv_envs : qtype_val list =
+    List.fold_left (fun ys y -> (env_names y []) @ ys) [] elst
+  in
   let bound_vars : qtype_val list = remove fv_envs fvs in
   TyScheme (collapse bound_vars, ty)
 
@@ -344,11 +366,13 @@ let rec infer (envs : record list) (exp : exp) (tyvar : ty) : subst =
   | ConstE (CInt _) -> unify [(tyvar, int_ty)]
   | ConstE (CBool _) -> unify [(tyvar, bool_ty)]
 
-  | IdE id -> unify [( RecordTy (RRec ([id, tyvar], fresh_var ()))
-                      , RecordTy (instantiate env))]
+  (*| IdE id -> unify [( RecordTy (RRec ([id, tyvar], fresh_var ()))*)
+                      (*, RecordTy (instantiate env))]*)
 
-  (*| IdE id -> unify [( RecordTy (instantiate env)*)
-                      (*, RecordTy (RRec ([id, tyvar], fresh_var ())))]*)
+  | IdE id -> unify [( RecordTy (instantiate env)
+                     , RecordTy (RRec ([id, tyvar], fresh_var ())))]
+
+  (*| EmpLstE -> getsub [ (ty, ListTy (fresh_tyvar ())) ]*)
 
   | AppE (e1, e2) ->
       let new_tyvar = fresh_tyvar () in
@@ -356,7 +380,7 @@ let rec infer (envs : record list) (exp : exp) (tyvar : ty) : subst =
       let s2 = infer (apply_sub_env_lst s1 envs) e2 (apply_sub_ty s1 new_tyvar) in
       compose s2 s1
 
-  | AbsE (Abs (id, body)) -> 
+  | AbsE (Abs (id, body)) ->
       let domain = fresh_tyvar () and range = fresh_tyvar () in
       let (sub0, envs') = add id domain envs in
       let sub1 = infer envs' body (apply_sub_ty sub0 range) in
@@ -365,22 +389,46 @@ let rec infer (envs : record list) (exp : exp) (tyvar : ty) : subst =
       in
       compose sub2 (compose sub1 sub0)
 
-  | BoxE e ->
+  | LetInE (Valbind (id, expr), body) ->
+      let alpha = fresh_tyvar () in
+      let phi1 = infer envs expr alpha in
+      let sigma = generalize (apply_sub_ty phi1 alpha)
+                    (apply_sub_env_lst phi1 envs) in
+      let phi2, envs' = add id sigma (apply_sub_env_lst phi1 envs) in
+      let phi3 = infer envs' body (apply_sub_ty (compose phi2 phi1) tyvar) in
+      compose phi3 (compose phi2 phi1)
+
+
+  | CondE cases ->
+      let rec aux subst : (exp * exp) list -> subst = function
+      | [] -> subst
+      | (guard, body) :: rest ->
+          let envs' = apply_sub_env_lst subst envs in
+          let phi0 = infer envs' guard bool_ty in
+          let phi1 = infer (apply_sub_env_lst phi0 envs') body tyvar in
+          aux (compose phi1 (compose phi0 subst)) rest
+      in
+      aux (getsub []) cases
+
+  | BoxE boxedexp ->
       let fresh1 = fresh_tyvar () in
       let newenv = RRec ([], fresh_var ()) in
-      let sub1 = infer (newenv :: envs) exp fresh1 in
+      let sub1 = infer (newenv :: envs) boxedexp fresh1 in
       let sub2 = unify [( apply_sub_ty sub1 tyvar
-                         , apply_sub_ty sub1 (BoxTy (newenv, fresh1)))]
+                        , apply_sub_ty sub1 (BoxTy (newenv, fresh1)))]
       in
       compose sub2 sub1
 
-  | UnboxE e ->
+  | UnboxE boxedexp ->
       let newenv = RRec ([], fresh_var ()) in
-      let sub1 = infer rest exp (BoxTy (newenv, tyvar)) in
+      let sub1 = infer rest boxedexp (BoxTy (newenv, tyvar)) in
       let sub2 = unify [( RecordTy (apply_sub_env sub1 newenv)
-                         , RecordTy (apply_sub_env sub1 (instantiate env)))]
+                        , RecordTy (apply_sub_env sub1 (instantiate env)))]
       in
       compose sub2 sub1
 
+  | RunE e -> infer envs e (BoxTy (CRec [], tyvar))
+
+  | EmpLstE -> unify [ (tyvar, (ListTy (fresh_tyvar ()))) ]
 )
 

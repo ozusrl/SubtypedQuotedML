@@ -74,7 +74,10 @@ module EvalBase (EvalFail : Eval) : Eval = struct
   | CondE ((g, b) :: r) ->
       let g' = eval_staged env g n in
       let b' = eval_staged env b n in
-      let (CondE cond_rest) = eval_staged env (CondE r) n in
+      let cond_rest = (match eval_staged env (CondE r) n with
+      | CondE e -> e
+      | _ -> failwith "") in (* suppress warning *)
+      (*let (CondE cond_rest) = eval_staged env (CondE r) n in*)
       CondE ((g', b') :: cond_rest)
 
   | ValueE exp -> ValueE exp

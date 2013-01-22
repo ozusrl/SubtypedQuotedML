@@ -28,6 +28,9 @@ and exp  =
   | RunE     of exp
   | LiftE    of exp
 
+  | RecE     of field list
+  | SelectE  of (exp * id)
+
 and env 'a = (id * 'a ref) list
 
 and stdfun =
@@ -38,11 +41,14 @@ and fun_val =
   | StdFun  of stdfun
   | Closure of value env * id * exp
 
+and field = (id * exp)
+
 and value =
-  | ConstV of const
-  | ClosV  of fun_val
-  | BoxV   of exp
-  | ListV  of value list
+  | ConstV  of const
+  | ClosV   of fun_val
+  | BoxV    of exp
+  | ListV   of value list
+  | RecV    of (id * value) list
   | UnitV
   with sexp
 
@@ -57,6 +63,9 @@ let val_type = function
 | ClosV _ -> "TyFun"
 | BoxV _ -> "TyBox"
 | UnitV -> "TyUnit"
+| RecV _ -> "TyRec"
+
+
 exception Not_bound of id
 exception TypeMismatch of (string * string)
 

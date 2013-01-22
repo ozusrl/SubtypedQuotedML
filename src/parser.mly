@@ -58,6 +58,8 @@ exp:
   | IF exp THEN exp             { CondE ( [ ($2, $4) ] ) }
   | IF exp THEN exp ELSE exp    { CondE ( [ ($2, $4); (ConstE (CBool true), $6) ] ) }
   | lst                         { $1 }
+  | record                      { $1 }
+  | exp DOT ID                  { SelectE ($1, $3) }
 
 func:
   | ID func                     { Abs ($1, AbsE $2) }
@@ -74,5 +76,13 @@ lst:
 lst_contents:
   | exp                         { AppE (AppE (IdE "::", $1), EmpLstE) }
   | exp SEMI lst_contents       { AppE (AppE (IdE "::", $1), $3) }
+
+record:
+  | LB RB                       { RecE [] }
+  | LB fields RB                { RecE $2 }
+
+fields:
+  | ID EQ exp                   { [ ($1, $3) ] }
+  | ID EQ exp SEMI fields       { ($1, $3) :: $5 }
 
 %%

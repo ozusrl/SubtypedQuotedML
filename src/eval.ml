@@ -148,6 +148,10 @@ module rec Eval2 : Eval = struct
   | SelectE (record, field) -> (match eval env record with
     | RecV fields -> snd (List.find (fun (i, v) -> i = field) fields)
     | not_rec -> raise (TypeMismatch ("RecTy", val_type not_rec)))
+  | RecUpdE (record, id, value) -> (match eval env record with
+    | RecV fields -> RecV ((id, eval env value) :: fields)
+    | not_rec -> raise (TypeMismatch ("RecTy", val_type not_rec)))
+      
 
   | exp -> Fail.eval env exp
 

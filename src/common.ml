@@ -30,6 +30,7 @@ and exp  =
 
   | RecE     of field list
   | SelectE  of (exp * id)
+  | RecUpdE  of (exp * id * exp)
 
 and env 'a = (id * 'a ref) list
 

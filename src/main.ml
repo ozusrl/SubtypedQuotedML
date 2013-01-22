@@ -1,10 +1,11 @@
 open Common
+open Translate
 open Eval
 
-let rec parse_and_eval_exprs ?(repl = false) lexbuf = 
+let rec parse_and_eval_exprs ?(repl = false) lexbuf =
   try
     let exp = Parser.main Lexer.mytoken lexbuf in
-    Printf.printf "Parsed expr: %s\n\n" (show_exp exp);
+    Printf.printf "Parsed expr: %s\n" (show_exp exp);
 
     try
       (* infer type and print *)
@@ -14,9 +15,17 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
       (*Printf.printf "Type without substitution: %s\n" (Types.show_type exp_ty);*)
       (*Printf.printf "Type: %s\n" (Types.show_type ty);*)
 
+
+      (* translate and print *)
+      let translation = translate exp [RecE []] in
+      Printf.printf "Translation: %s\n" (show_exp translation);
+
       (* eval value and print *)
       let value = Eval2.eval stdenv exp in
-      Printf.printf "Return value: %s\n\n\n" (show_val value);
+      Printf.printf "Return value in popl 11: %s\n" (show_val value);
+
+      let value2 = Eval1.eval stdenv exp in
+      Printf.printf "Return value in popl 06: %s\n\n\n" (show_val value2);
 
       (* run only one expression when in repl *)
       if not repl then parse_and_eval_exprs lexbuf

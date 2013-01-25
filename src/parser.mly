@@ -2,7 +2,7 @@
   open Common
 %}
 
-%token EOF DOT FUN LP RP LB RB UNBOX RUN LET IN SEMI LT GT COMMA ARROW
+%token EOF DOT FUN LP RP LB RB UNBOX RUN LET IN SEMI LT GT COMMA ARROW COLON
 %token EQ PLUS MINUS MULT DIV FIX IF THEN ELSE LIFT LBRACK RBRACK CONS REC
 %token <string> ID
 %token <int>    INT
@@ -60,6 +60,8 @@ exp:
   | lst                         { $1 }
   | record                      { $1 }
   | exp DOT ID                  { SelectE ($1, $3) }
+    /* TODO: find a better record update syntax */
+  | exp DOT ID COLON EQ exp     { RecUpdE ($1, $3, $6) }
 
 func:
   | ID func                     { Abs ($1, AbsE $2) }

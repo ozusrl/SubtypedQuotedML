@@ -2,7 +2,6 @@ open Common
 open Types
 
 exception StageException
-exception NotImplemented
 exception Failure of string
 exception UnsupportedExp of exp
 exception SelectException of (exp * id)
@@ -88,7 +87,8 @@ module EvalBase (EvalFail : Eval) : Eval = struct
         match eval env exp with
         | BoxV exp' -> exp'
         | ConstV c -> ConstE c
-        | _ -> raise StageException
+        | v -> ValueE v
+        (*| _ -> raise StageException*)
       else
         UnboxE (eval_staged env exp (n-1))
       end
@@ -149,16 +149,19 @@ module rec Eval2 : Eval = struct
       let field_vals = List.map (fun (id, e) -> (id, eval env e)) fields in
       RecV field_vals
   | SelectE (record, field) -> (match eval env record with
-    | RecV fields -> snd (List.find (fun (i, v) -> i = field) fields)
+    | RecV fields ->
+        (try
+          snd (List.find (fun (i, v) -> i = field) fields)
+        with Not_found -> failwith ("Not_found: " ^ field))
     | not_rec -> raise (TypeMismatch ("RecTy", val_type not_rec)))
   | RecUpdE (record, id, value) -> (match eval env record with
     | RecV fields -> RecV ((id, eval env value) :: fields)
     | not_rec -> raise (TypeMismatch ("RecTy", val_type not_rec)))
-      
+
 
   | exp -> Fail.eval env exp
 
-  and eval_staged env exp n =
+  let eval_staged env exp n =
     failwith "staged computations are not supported in this language"
 
 end

@@ -17,15 +17,35 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
 
 
       (* translate and print *)
-      let (translation, _) = translate exp [RecE []] in
-      Printf.printf "Translation: %s\n" (show_exp translation);
+      let translation =
+        try
+          let (translation, _) = translate exp [RecE []] in
+          Some translation
+        with exc -> print_endline (Printexc.to_string exc); None
+      in
 
       (* eval value and print *)
-      let value = Eval1.eval stdenv exp in
-      Printf.printf "Return value in popl 06: %s\n" (show_val value);
+      (try
+        let value = Eval1.eval stdenv exp in
+        Printf.printf "Return value in popl 06: %s\n" (show_val value);
+      with exc -> print_endline
+        ("error while running popl 06: " ^ Printexc.to_string exc));
 
-      let value2 = Eval2.eval stdenv translation in
-      Printf.printf "Return value of translation in popl 11: %s\n\n\n" (show_val value2);
+      (try
+        let value = Eval2.eval stdenv exp in
+        Printf.printf "Return value in popl 11: %s\n" (show_val value);
+      with exc -> print_endline ("error while running popl 11: " ^ Printexc.to_string exc));
+
+      (match translation with
+      | None -> ()
+      | Some t ->
+        Printf.printf "Translation: %s\n" (show_exp t);
+        try
+          let value2 = Eval2.eval stdenv t in
+          Printf.printf "Return value of translation in popl 11: %s\n\n\n"
+            (show_val value2)
+        with exc ->
+          print_endline ("error while running popl 11: " ^ (Printexc.to_string exc)));
 
       (* run only one expression when in repl *)
       if not repl then parse_and_eval_exprs lexbuf

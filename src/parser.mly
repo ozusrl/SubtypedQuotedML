@@ -21,8 +21,8 @@
 %left DIV MULT
 %nonassoc FUN FIX LET LP LBRACK LT LB IF ID INT BOOL
 %left APP
-%nonassoc UNBOX RUN LIFT
 %nonassoc DOT
+%nonassoc UNBOX RUN LIFT
 
 %%
 

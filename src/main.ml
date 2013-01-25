@@ -21,11 +21,11 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
       Printf.printf "Translation: %s\n" (show_exp translation);
 
       (* eval value and print *)
-      let value = Eval2.eval stdenv exp in
-      Printf.printf "Return value in popl 11: %s\n" (show_val value);
+      let value = Eval1.eval stdenv exp in
+      Printf.printf "Return value in popl 06: %s\n" (show_val value);
 
-      let value2 = Eval1.eval stdenv exp in
-      Printf.printf "Return value in popl 06: %s\n\n\n" (show_val value2);
+      let value2 = Eval2.eval stdenv translation in
+      Printf.printf "Return value of translation in popl 11: %s\n\n\n" (show_val value2);
 
       (* run only one expression when in repl *)
       if not repl then parse_and_eval_exprs lexbuf

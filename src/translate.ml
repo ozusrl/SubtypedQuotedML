@@ -61,8 +61,6 @@ let rec app_of_ctx ctx body = match ctx with
 
 (* translate multi-staged language to language with records *)
 let rec translate exp : exp list -> (exp * ctx list) =
-  let envvar n = "r" ^ (string_of_int n) in
-  let holevar n = "h" ^ (string_of_int n) in
   function
   | [] -> failwith "translate: empty env list"
   | env :: rest_envs as envlist -> (match exp with

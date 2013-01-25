@@ -1,6 +1,8 @@
 open Sexplib.Sexp
 open Sexplib.Conv
 
+exception NotImplemented
+
 type id = string with sexp
 
 type dec = Valbind of (id * exp)

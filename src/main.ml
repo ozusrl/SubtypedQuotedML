@@ -17,7 +17,7 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
 
 
       (* translate and print *)
-      let translation = translate exp [RecE []] in
+      let (translation, _) = translate exp [RecE []] in
       Printf.printf "Translation: %s\n" (show_exp translation);
 
       (* eval value and print *)

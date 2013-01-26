@@ -24,6 +24,7 @@ and exp  =
   | CondE    of (exp * exp) list
 
   (* ValueE is returned from eval_staged when a lifted expression is unboxed *)
+  | ValueE   of value
   | BoxE     of exp
   | UnboxE   of exp
   | RunE     of exp

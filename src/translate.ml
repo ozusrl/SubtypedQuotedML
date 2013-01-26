@@ -114,5 +114,8 @@ let rec translate exp : exp list -> (exp * ctx list) =
         (LetInE (Valbind (var, exp'), AppE (IdE var, stdrec)), ctxs)
 
 
-    | LiftE exp -> raise NotImplemented
+    | LiftE exp -> 
+        let exp', ctx = translate exp envlist in
+        (AbsE (Abs (hole_var (), exp')), ctx)
+    | ValueE v -> (ValueE v, [])
     | RecE _ | SelectE _ | RecUpdE _ -> failwith "record expressions in translate")

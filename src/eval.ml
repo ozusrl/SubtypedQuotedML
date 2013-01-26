@@ -48,6 +48,9 @@ module EvalBase (EvalFail : Eval) : Eval = struct
     | BoxV code -> eval env code
     | not_code -> raise (TypeMismatch ("CodeTy", val_type not_code)))
 
+  | UnboxE _ -> failwith "can't unbox in stage 0"
+  | LiftE exp -> BoxV (ValueE (eval env exp))
+  | ValueE v -> v
   | e -> EvalFail.eval env e
 
   (* Eval }}} *********************************************************)
@@ -75,6 +78,7 @@ module EvalBase (EvalFail : Eval) : Eval = struct
       (*let (CondE cond_rest) = eval_staged env (CondE r) n in*)
       CondE ((g', b') :: cond_rest)
 
+  | ValueE v -> ValueE v
   | BoxE exp -> BoxE (eval_staged env exp (n+1))
   | UnboxE exp ->
       if n < 1 then raise StageException
@@ -88,7 +92,7 @@ module EvalBase (EvalFail : Eval) : Eval = struct
       end
 
   | RunE exp -> RunE (eval_staged env exp n)
-  | LiftE exp -> eval_staged env exp (n-1)
+  | LiftE exp -> LiftE (eval_staged env exp n)
 
   | e -> EvalFail.eval_staged env exp n)
 

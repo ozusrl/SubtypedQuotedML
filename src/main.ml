@@ -19,7 +19,7 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
       (* translate and print *)
       let translation =
         try
-          let (translation, _) = translate exp [RecE []] in
+          let (translation, _) = translate exp [stdrec] in
           Some translation
         with exc -> print_endline (Printexc.to_string exc); None
       in
@@ -44,8 +44,10 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
           let value2 = Eval2.eval stdenv t in
           Printf.printf "Return value of translation in popl 11: %s\n\n\n"
             (show_val value2)
-        with exc ->
-          print_endline ("error while running popl 11: " ^ (Printexc.to_string exc)));
+        with TypeMismatch (expected, found) ->
+               Printf.printf "TypeMismatch: expected: %s, found: %s.\n" expected found
+           | exc ->
+               print_endline ("error while running popl 11: " ^ (Printexc.to_string exc)));
 
       (* run only one expression when in repl *)
       if not repl then parse_and_eval_exprs lexbuf

@@ -78,13 +78,13 @@ let rec translate exp : exp list -> (exp * ctx list) =
 
     | AbsE (Abs (id, body)) ->
         let env' = RecUpdE (env, id, IdE id) in
-        let body', ctxs = translate body (env' :: envlist) in
+        let body', ctxs = translate body (env' :: rest_envs) in
         (AbsE (Abs (id, body')), ctxs)
 
     | LetInE (Valbind (id, value), body) ->
         let value', ctx1 = translate value envlist in
         let body', ctx2 =
-          translate value (RecUpdE (env, id, IdE id) :: rest_envs) in
+          translate body (RecUpdE (env, id, IdE id) :: rest_envs) in
         (LetInE (Valbind (id, value'), body'), merge_ctxs ctx1 ctx2)
 
     | FixE (id, (Abs (arg, body))) ->
@@ -112,7 +112,7 @@ let rec translate exp : exp list -> (exp * ctx list) =
     | RunE exp ->
         let var = env_var () in
         let exp', ctxs = translate exp envlist in
-        (LetInE (Valbind (var, exp'), AppE (IdE var, RecE [])), ctxs)
+        (LetInE (Valbind (var, exp'), AppE (IdE var, stdrec)), ctxs)
 
 
     | LiftE exp -> raise NotImplemented

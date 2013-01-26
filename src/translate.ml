@@ -101,11 +101,11 @@ let rec translate exp : exp list -> (exp * ctx list) =
         let (exp', k) = translate exp env' in
         (match k with
          | [] -> (AbsE (Abs (var, exp')), [])
-         | k :: kx -> ((app_of_ctx k (AbsE (Abs (var, exp')))), kx))
+         | k :: kx -> (app_of_ctx k (AbsE (Abs (var, exp'))), kx))
 
     | UnboxE exp ->
         let exp', ctxs = translate exp rest_envs in
-        let var = env_var () in
+        let var = hole_var () in
         (AppE (IdE var, env), Ctx (var, exp') :: ctxs)
 
     | RunE exp ->

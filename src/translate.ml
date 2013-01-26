@@ -94,7 +94,6 @@ let rec translate exp : exp list -> (exp * ctx list) =
         (FixE (id, (Abs (arg, body'))), ctxs)
 
     | CondE e -> raise NotImplemented
-    | ValueE _ -> failwith "ValueE in translate"
 
     | BoxE exp ->
         let var = env_var () in

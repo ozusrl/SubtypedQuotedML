@@ -43,14 +43,10 @@ module EvalBase (EvalFail : Eval) : Eval = struct
     | ConstV (CBool true) -> eval env e
     | _ -> eval env (CondE r))
 
-  | ValueE value -> value
   | BoxE exp    -> BoxV (eval_staged env exp 1)
-  | UnboxE (BoxE exp) -> eval env (eval_staged env exp 1)
-  | UnboxE not_box -> raise (Failure "unboxing a non-box value")
   | RunE exp -> (match eval env exp with
     | BoxV code -> eval env code
     | not_code -> raise (TypeMismatch ("CodeTy", val_type not_code)))
-  | LiftE exp -> BoxV (ValueE (eval env exp))
 
   | e -> EvalFail.eval env e
 
@@ -79,7 +75,6 @@ module EvalBase (EvalFail : Eval) : Eval = struct
       (*let (CondE cond_rest) = eval_staged env (CondE r) n in*)
       CondE ((g', b') :: cond_rest)
 
-  | ValueE exp -> ValueE exp
   | BoxE exp -> BoxE (eval_staged env exp (n+1))
   | UnboxE exp ->
       if n < 1 then raise StageException
@@ -87,14 +82,13 @@ module EvalBase (EvalFail : Eval) : Eval = struct
         match eval env exp with
         | BoxV exp' -> exp'
         | ConstV c -> ConstE c
-        | v -> ValueE v
-        (*| _ -> raise StageException*)
+        | _ -> failwith "unboxing a non-code value"
       else
         UnboxE (eval_staged env exp (n-1))
       end
 
   | RunE exp -> RunE (eval_staged env exp n)
-  | LiftE exp -> LiftE (eval_staged env exp n)
+  | LiftE exp -> eval_staged env exp (n-1)
 
   | e -> EvalFail.eval_staged env exp n)
 

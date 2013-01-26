@@ -45,7 +45,7 @@ module EvalBase (EvalFail : Eval) : Eval = struct
 
   | BoxE exp    -> BoxV (eval_staged env exp 1)
   | RunE exp -> (match eval env exp with
-    | BoxV code -> eval env code
+    | BoxV code -> eval stdenv code
     | not_code -> raise (TypeMismatch ("CodeTy", val_type not_code)))
 
   | UnboxE _ -> failwith "can't unbox in stage 0"
@@ -85,7 +85,6 @@ module EvalBase (EvalFail : Eval) : Eval = struct
       else begin if n = 1 then
         match eval env exp with
         | BoxV exp' -> exp'
-        | ConstV c -> ConstE c
         | _ -> failwith "unboxing a non-code value"
       else
         UnboxE (eval_staged env exp (n-1))

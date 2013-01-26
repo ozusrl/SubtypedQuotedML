@@ -34,7 +34,7 @@ and exp  =
   | SelectE  of (exp * id)
   | RecUpdE  of (exp * id * exp)
 
-and env 'a = (id * 'a ref) list
+and env 'a = (id * 'a) list
 
 and stdfun =
   | StdCurry    of id * (value -> stdfun)
@@ -72,18 +72,14 @@ let val_type = function
 exception Not_bound of id
 exception TypeMismatch of (string * string)
 
-let bind_value env id value = (id, ref value) :: env
+let bind_value env id value = (id, value) :: env
 
-let rec lookup_ref env id = match env with
+let rec lookup env id = match env with
 | []             -> raise (Not_bound id)
-| ((x, v) :: xs) -> if x = id then v else lookup_ref xs id
+| ((x, v) :: xs) -> if x = id then v else lookup xs id
 
 let set_value env id value =
-  let ref = lookup_ref env id in
-  ref := value
-
-let lookup env id = !(lookup_ref env id)
-
+  bind_value env id value
 
 (* Mappings of OCaml function and standard environment {{{ **********)
 

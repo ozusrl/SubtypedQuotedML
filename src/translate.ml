@@ -93,7 +93,12 @@ let rec translate exp : exp list -> (exp * ctx list) =
         let body', ctxs = translate body (env'' :: envlist) in
         (FixE (id, (Abs (arg, body'))), ctxs)
 
-    | CondE e -> raise NotImplemented
+    | CondE [] -> (CondE [], [])
+    | CondE ((g, b) :: r) ->
+        let g', ctx = translate g envlist in
+        let b', ctx' = translate b envlist in
+        let ((CondE rest), ctx'') = translate (CondE r) envlist in
+        (CondE ((g', b') :: rest), merge_ctxs ctx'' (merge_ctxs ctx ctx'))
 
     | BoxE exp ->
         let var = env_var () in

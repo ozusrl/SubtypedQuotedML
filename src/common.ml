@@ -58,9 +58,8 @@ and value =
   | UnitV
   with sexp
 
-let show_exp exp = to_string (sexp_of_exp exp)
-
-and show_val value = to_string (sexp_of_value value)
+let show_exp exp    = to_string (sexp_of_exp exp)
+let show_val value  = to_string (sexp_of_value value)
 
 let val_type = function
 | ConstV (CInt _) -> "TyInt"
@@ -135,6 +134,13 @@ let stdenv =
     | not_list -> raise (TypeMismatch ("TyList", val_type not_list)))))
   in
 
+  let nth = ClosV (StdFun (StdCurry ("nth", function
+    | ConstV (CInt n) -> StdFunction ("nth", function
+      | ListV lst -> List.nth lst (n-1)
+      | not_list  -> raise (TypeMismatch ("TyList", val_type not_list)))
+    | not_int -> raise (TypeMismatch ("TyInt", val_type not_int)))))
+  in
+
   (* standard environment *)
   [ ("+",     ref (mk_arith_fun "+" (+)))
   ; ("-",     ref (mk_arith_fun "-" (-)))
@@ -145,10 +151,11 @@ let stdenv =
   ; ("head",  ref head_v)
   ; ("tail",  ref tail_v)
   ; ("empty", ref empty_ty)
+  ; ("nth",   ref nth)
   ]
 
 let stdrec =
   let mkIdE id = (id, IdE id) in
-  RecE (List.map mkIdE ["+"; "-"; "*"; "="; "::"; "head"; "tail"; "empty"])
+  RecE (List.map mkIdE ["+"; "-"; "*"; "="; "::"; "head"; "tail"; "empty"; "nth"])
 
 (* Mappings of OCaml function and standard environment }}} **********)

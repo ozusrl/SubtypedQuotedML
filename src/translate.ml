@@ -51,13 +51,8 @@ let rec merge_ctxs ctxs1 ctxs2 =
 let rec app_of_ctx ctx body = match ctx with
 | Ctx (hole, exp) -> AppE (AbsE (Abs (hole, body)), exp)
 | CtxL [(hole, exp)] -> app_of_ctx (Ctx (hole, exp)) body
-| CtxL l ->
-    let rec iter ctxl accum = match ctxl with
-    | [] -> accum
-    | (hole, exp) :: cx -> iter cx (AppE (AbsE (Abs (hole, body)), exp))
-    in
-    let l' = List.rev l in
-    iter (List.tl l') (app_of_ctx (Ctx (List.hd l')) body)
+| CtxL ((hole, exp) :: cx) ->
+    AppE (AbsE (Abs (hole, app_of_ctx (CtxL cx) body)), exp)
 
 (* translate multi-staged language to language with records *)
 let rec translate exp : exp list -> (exp * ctx list) =
@@ -117,7 +112,6 @@ let rec translate exp : exp list -> (exp * ctx list) =
         let var = env_var () in
         let exp', ctxs = translate exp envlist in
         (LetInE (Valbind (var, exp'), AppE (IdE var, stdrec)), ctxs)
-
 
     | LiftE exp -> 
         let exp', ctx = translate exp envlist in

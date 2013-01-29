@@ -5,6 +5,11 @@ exception NotImplemented
 
 type id = string with sexp
 
+type env 'a = (id * 'a ref) list
+
+let env_of_sexp _ _ = []
+let sexp_of_env _ _ = sexp_of_string "env"
+
 type dec = Valbind of (id * exp)
 
 and const = CInt of int | CBool of bool
@@ -33,8 +38,6 @@ and exp  =
   | RecE     of field list
   | SelectE  of (exp * id)
   | RecUpdE  of (exp * id * exp)
-
-and env 'a = (id * 'a ref) list
 
 and stdfun =
   | StdCurry    of id * (value -> stdfun)

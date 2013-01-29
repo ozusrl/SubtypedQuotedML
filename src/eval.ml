@@ -33,7 +33,7 @@ module EvalBase (EvalFail : Eval) : Eval = struct
       let env' = bind_value env arg value in
       eval env' body
 
-  | FixE (id, (Abs (arg, body))) ->
+  | FixE (id, Abs (arg, body)) ->
       let env' = bind_value env id UnitV in
       let clos = ClosV (Closure (env', arg, body)) in
       set_value env' id clos; clos

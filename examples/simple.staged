@@ -27,3 +27,9 @@ let dot = fix dot lst1 -> fun lst2 ->
   else (head lst1 * head lst2) + dot (tail lst1) (tail lst2)
 in dot [1;2;3] [3;4;5];
 
+let prod =
+  let rec gen n =
+    if n = 0 then << 0 >>
+    else << nth ~(lift(~(lift(n)))) w * ~(lift(nth ~(lift(n)) v)) + ~(~(gen (n-1))) >>
+  in fun n -> < fun v -> ~(gen n) >
+in run(< fun w -> ~(run (prod 2) [5; 7]) >) [2; 3];

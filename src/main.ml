@@ -15,6 +15,11 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
       (*Printf.printf "Type without substitution: %s\n" (Types.show_type exp_ty);*)
       (*Printf.printf "Type: %s\n" (Types.show_type ty);*)
 
+      (try
+        let ty2 = Types2.typ 0 Types2.stdenv exp in
+        Printf.printf "Type2: %s\n" (Types2.show_type ty2);
+      with exc -> print_endline
+        ("exception in types2: " ^ Printexc.to_string exc));
 
       (* translate and print *)
       let translation =

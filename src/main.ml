@@ -10,14 +10,14 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
     try
       (* infer type and print *)
       (*let exp_ty = Types.fresh_tyvar () in*)
-      (*let subs = Types.infer Types.test_env exp exp_ty in*)
-      (*let ty = Types.apply_sub_ty subs exp_ty in*)
+      (*let subs   = Types.infer Types.test_env exp exp_ty in*)
+      (*let ty     = Types.apply_sub_ty subs exp_ty in*)
       (*Printf.printf "Type without substitution: %s\n" (Types.show_type exp_ty);*)
       (*Printf.printf "Type: %s\n" (Types.show_type ty);*)
 
       (try
         let ty2 = Types2.typ 0 Types2.stdenv exp in
-        Printf.printf "Type2: %s\n" (Types2.show_type ty2);
+        Printf.printf "Type2: %s\n---\n" (Types2.show_type ty2);
       with exc -> print_endline
         ("exception in types2: " ^ Printexc.to_string exc));
 

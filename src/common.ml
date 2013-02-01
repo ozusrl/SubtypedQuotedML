@@ -1,8 +1,6 @@
 open Sexplib.Sexp
 open Sexplib.Conv
 
-exception NotImplemented
-
 type id = string with sexp
 
 type env 'a = (id * 'a ref) list
@@ -57,6 +55,8 @@ and value =
   | RecV    of (id * value) list
   | UnitV
   with sexp
+
+exception NotImplemented of exp
 
 let show_exp exp    = to_string (sexp_of_exp exp)
 let show_val value  = to_string (sexp_of_value value)

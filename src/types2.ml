@@ -20,12 +20,17 @@ type ty =
   | FunTy of (ty * ty)
   | VarTy of typevar
   | ListTy of ty
+  | RecTy of (field list * rowvar option)
 
 and typevar = (tyvarkind * int) ref
 
 and tyvarkind =
   | NoLink of string  (* just a type variable *)
   | LinkTo of ty      (* equated to type ty *)
+
+and field = (id * ty)
+
+and rowvar = typevar
   with sexp
 
 type tyscm = TypeScheme of (typevar list * ty) with sexp
@@ -76,6 +81,16 @@ let instantiate lvl (TypeScheme (tvs, t)) : ty =
     | VarTy link, ((l, t) :: rest) ->
         if link = l then t else subst ty rest
     | ListTy ty, ss -> ListTy (subst ty ss)
+    | RecTy (fields, rowvar), ss ->
+        let rec inst_fields = function
+        | [] -> []
+        | (id, ty) :: rest -> (id, subst ty ss) :: inst_fields rest
+        in
+        match rowvar with
+        | None -> RecTy (inst_fields fields, None)
+        | Some row ->
+            let (VarTy instrow) = subst (VarTy row) ss in
+            RecTy (inst_fields fields, Some instrow)
     in
     subst t ss
 
@@ -83,16 +98,16 @@ let set_tvkind tyvar newkind =
   let (kind, lvl) = !tyvar in
   tyvar := (newkind, lvl)
 
-(*let rec norm_ty = function
+let rec norm_ty = function
 | VarTy tyvar -> (match !tyvar with
   | LinkTo t1, _ ->
       let t2 = norm_ty t1 in
       set_tvkind tyvar (LinkTo t2);
       t2
   | _ -> VarTy tyvar)
-| t -> t*)
+| t -> t
 
-let rec norm_ty = function
+(*let rec norm_ty = function
 | IntTy -> IntTy
 | BoolTy -> BoolTy
 | FunTy (t1, t2) -> FunTy (norm_ty t1, norm_ty t2)
@@ -102,7 +117,7 @@ let rec norm_ty = function
       set_tvkind tyvar (LinkTo t2);
       t2
   | _ -> VarTy tyvar)
-| ListTy t -> ListTy (norm_ty t)
+| ListTy t -> ListTy (norm_ty t)*)
 
 let rec freetyvars t : typevar list = match norm_ty t with
 | IntTy          -> []
@@ -110,6 +125,14 @@ let rec freetyvars t : typevar list = match norm_ty t with
 | FunTy (t1, t2) -> union (freetyvars t1) (freetyvars t2)
 | VarTy tv       -> [tv]
 | ListTy t1      -> freetyvars t1
+| RecTy (fields, rowvar) ->
+    let rec tyvars_of_fields = function
+    | [] -> []
+    | (_, ty) :: rest -> freetyvars ty @ tyvars_of_fields rest
+    in
+    match rowvar with
+    | Some typevar -> tyvars_of_fields fields @ freetyvars (VarTy typevar)
+    | None -> tyvars_of_fields fields
 
 let rec generalize lvl (t : ty) : tyscm =
   let notfreeincontext tyvar =
@@ -138,14 +161,66 @@ let rec link_to_ty (tyvar : typevar) (t : ty) =
     prune level fvs;
     set_tv_kind tyvar (LinkTo t)
 
-let rec unify (t1 : ty) (t2 : ty) : unit =
+let field_sort fields =
+  let sort_fn (id1, _) (id2, _) = compare id1 id2 in
+  List.sort sort_fn fields
+
+let rec unify_recs_concrete lvl fields1 fields2 =
+  match field_sort fields1, field_sort fields2 with
+  | [], [] -> ()
+  | [], (id, _) :: _
+  | (id, _) :: _, [] ->
+      failwith (Printf.sprintf "can't unify record field %s." id)
+  | (id1, ty1) :: r1, (id2, ty2) :: r2 ->
+      if id1 = id2 then
+        let _ = unify lvl ty1 ty2 in
+        unify_recs_concrete lvl r1 r2
+      else
+        failwith (Printf.sprintf "can't unify record fields %s and %s." id1 id2)
+
+and unify_recs_one_row lvl fields1 row fields2 =
+  match field_sort fields1, field_sort fields2 with
+  | [], [] -> ()
+  | (id1, ty1) :: _, [] ->
+      failwith (Printf.sprintf "can't unify record field %s." id1)
+  | (id1, ty1) :: r1, (id2, ty2) :: r2 ->
+      (match compare id1 id2 with
+      | -1 -> unify_recs_one_row lvl r1 row ((id2, ty2) :: r2)
+      |  0 -> unify lvl ty1 ty2; unify_recs_one_row lvl r1 row r2
+      |  1 ->
+          unify lvl row (RecTy ([(id2, ty2)], Some (new_typevar lvl)));
+          unify_recs_one_row lvl r1 row r2
+      | _ -> failwith"")
+
+and unify_recs_two_row lvl fields1 row1 fields2 row2 =
+  match field_sort fields1, field_sort fields2 with
+  | [], [] -> ()
+  | (id1, ty1) :: r1, [] ->
+      unify lvl row2 (RecTy ([id1, ty1], Some (new_typevar lvl)));
+      unify_recs_two_row lvl r1 row1 [] row2
+  | [], (id2, ty2) :: r2 ->
+      unify lvl row1 (RecTy ([id2, ty2], Some (new_typevar lvl)));
+  | (id1, ty1) :: r1, (id2, ty2) :: r2 ->
+      (match compare id1 id2 with
+      | -1 ->
+          unify lvl row2 (RecTy ([(id1, ty1)], Some (new_typevar lvl)));
+          unify_recs_two_row lvl r1 row1 ((id2, ty2) :: r2) row2
+      |  0 ->
+          unify lvl ty1 ty2;
+          unify_recs_two_row lvl r1 row1 r2 row2
+      |  1 ->
+          unify lvl row1 (RecTy ([(id2, ty2)], Some (new_typevar lvl)));
+          unify_recs_two_row lvl ((id1, ty1) :: r1) row1 r2 row2)
+
+
+and unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
   let t1' = norm_ty t1 in
   let t2' = norm_ty t2 in
   match (t1', t2') with
   | IntTy, IntTy -> ()
   | BoolTy, BoolTy -> ()
   | FunTy (t1', t2'), FunTy (t1'', t2'') ->
-      unify t1' t1''; unify t2' t2''
+      unify lvl t1' t1''; unify lvl t2' t2''
   | VarTy tv1, VarTy tv2 ->
       if tv1 = tv2 then ()
       else
@@ -155,9 +230,19 @@ let rec unify (t1 : ty) (t2 : ty) : unit =
           link_to_ty tv1 t2'
         else
           link_to_ty tv2 t1'
-  | ListTy tv1, ListTy tv2 -> unify tv1 tv2
+  | ListTy tv1, ListTy tv2 -> unify lvl tv1 tv2
   | VarTy tv1, _ -> link_to_ty tv1 t2'
   | _, VarTy tv2 -> link_to_ty tv2 t1'
+
+  | RecTy (fields1, None), RecTy (fields2, None) ->
+      unify_recs_concrete lvl fields1 fields2
+  | RecTy (fields1, Some var1), RecTy (fields2, None) ->
+      unify_recs_one_row lvl fields1 (VarTy var1) fields2
+  | RecTy (fields1, None), RecTy (fields2, Some var2) ->
+      unify_recs_one_row lvl fields2 (VarTy var2) fields1
+  | RecTy (fields1, Some var1), RecTy (fields2, Some var2) ->
+      unify_recs_two_row lvl fields1 (VarTy var1) fields2 (VarTy var2)
+
   | t1, t2 -> failwith (Printf.sprintf "type error: %s and %s."
                   (show_type t1) (show_type t2))
 
@@ -170,7 +255,7 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
     let funty = typ lvl env e1 in
     let argty = typ lvl env e2 in
     let retty = VarTy (new_typevar lvl) in
-    unify funty (FunTy (argty, retty));
+    unify lvl funty (FunTy (argty, retty));
     retty
 | AbsE (Abs (id, body)) ->
     let ptyv       = VarTy (new_typevar lvl) in (* parameter type *)
@@ -189,7 +274,7 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
         :: (fname, TypeScheme ([], FunTy (ptyv, rtyv)))
         :: env in
     let rtyp = typ lvl f_body_env body in
-    unify rtyp rtyv;
+    unify lvl rtyp rtyv;
     FunTy (ptyv, rtyv)
 | CondE [] -> failwith "CondE with empty cond list"
 | CondE ((guard, body) :: rest) ->
@@ -197,17 +282,36 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
     | [] -> body_ty
     | (guard, body) :: rest ->
         let guard_ty = typ lvl env guard in
-        unify guard_ty BoolTy;
+        unify lvl guard_ty BoolTy;
         let body_ty' = typ lvl env body in
-        unify body_ty body_ty';
+        unify lvl body_ty body_ty';
         iter body_ty rest
     in
     let guard_ty = typ lvl env guard in
-    unify guard_ty BoolTy;
+    unify lvl guard_ty BoolTy;
     let body_ty = typ lvl env body in
     iter body_ty rest
 
-| e -> raise (NotImplemented e)
+(* records --------------------------------------- *)
+| RecE fields ->
+    let rec typ_of_fields lvl env = function
+    | [] -> []
+    | (id, exp) :: rest ->
+        (id, typ lvl env exp) :: typ_of_fields lvl env rest
+    in
+    RecTy (typ_of_fields lvl env fields, None)
+
+| SelectE (exp, id) ->
+    let expty = typ lvl env exp in
+    let fieldty = VarTy (new_typevar lvl) in
+    unify lvl expty (RecTy ([(id, fieldty)], Some (new_typevar lvl)));
+    fieldty
+
+| RecUpdE (exp, id, newexp) as e -> raise (NotImplemented e)
+
+(* staged computations *)
+| ValueE _  | BoxE _  | UnboxE _  | RunE _  | LiftE _ as e ->
+    raise (NotImplemented e)
 
 let stdenv =
   let arith_op_ty = TypeScheme ([], FunTy (IntTy, FunTy (IntTy, IntTy))) in

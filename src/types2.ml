@@ -2,8 +2,6 @@ open Common
 open Sexplib.Sexp
 open Sexplib.Conv
 
-(* set operations on lists *)
-
 let rec union xs ys = match xs with
 | []      -> ys
 | x :: xr ->
@@ -15,8 +13,6 @@ let rec union xs ys = match xs with
 let rec unique = function
 | [] -> []
 | x :: xr -> if List.mem x xr then unique xr else x :: unique xr
-
-(* -------------------------------------------- *)
 
 type ty =
   | IntTy
@@ -70,7 +66,7 @@ let new_typevar (lvl : int) : typevar =
 let instantiate lvl (TypeScheme (tvs, t)) : ty =
   if List.length tvs = 0 then
     t
-  else 
+  else
     let ss = List.map (fun tv -> (tv, VarTy (new_typevar lvl))) tvs in
     let rec subst ty ss = match ty, ss with
     | ty, [] -> ty
@@ -87,14 +83,26 @@ let set_tvkind tyvar newkind =
   let (kind, lvl) = !tyvar in
   tyvar := (newkind, lvl)
 
-let rec norm_ty = function
+(*let rec norm_ty = function
 | VarTy tyvar -> (match !tyvar with
   | LinkTo t1, _ ->
       let t2 = norm_ty t1 in
       set_tvkind tyvar (LinkTo t2);
       t2
   | _ -> VarTy tyvar)
-| t -> t
+| t -> t*)
+
+let rec norm_ty = function
+| IntTy -> IntTy
+| BoolTy -> BoolTy
+| FunTy (t1, t2) -> FunTy (norm_ty t1, norm_ty t2)
+| VarTy tyvar -> (match !tyvar with
+  | LinkTo t1, _ ->
+      let t2 = norm_ty t1 in
+      set_tvkind tyvar (LinkTo t2);
+      t2
+  | _ -> VarTy tyvar)
+| ListTy t -> ListTy (norm_ty t)
 
 let rec freetyvars t : typevar list = match norm_ty t with
 | IntTy          -> []
@@ -140,7 +148,7 @@ let rec unify (t1 : ty) (t2 : ty) : unit =
       unify t1' t1''; unify t2' t2''
   | VarTy tv1, VarTy tv2 ->
       if tv1 = tv2 then ()
-      else 
+      else
         let (_, tv1level) = !tv1 in
         let (_, tv2level) = !tv2 in
         if tv1level < tv2level then
@@ -158,24 +166,50 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
 | ConstE (CInt _) -> IntTy
 | ConstE (CBool _) -> BoolTy
 | EmpLstE -> ListTy (VarTy (new_typevar lvl))
-| LetInE (Valbind (id, rhs), body) ->
-    let rhsty = typ (lvl+1) env rhs in
-    let letenv = (id, generalize lvl rhsty) :: env in
-    typ lvl letenv body
-| AbsE (Abs (id, body)) ->
-    let ptyv = VarTy (new_typevar lvl) in (* parameter type *)
-    let f_body_env = (id, TypeScheme([], ptyv)) :: env in
-    let rtyp = typ lvl f_body_env body in (* return value type *)
-    FunTy (ptyv, rtyp)
 | AppE (e1, e2) ->
     let funty = typ lvl env e1 in
     let argty = typ lvl env e2 in
     let retty = VarTy (new_typevar lvl) in
     unify funty (FunTy (argty, retty));
     retty
-| _ -> raise NotImplemented
+| AbsE (Abs (id, body)) ->
+    let ptyv       = VarTy (new_typevar lvl) in (* parameter type *)
+    let f_body_env = (id, TypeScheme([], ptyv)) :: env in
+    let rtyp       = typ lvl f_body_env body in (* return value type *)
+    FunTy (ptyv, rtyp)
+| LetInE (Valbind (id, rhs), body) ->
+    let rhsty  = typ (lvl+1) env rhs in
+    let letenv = (id, generalize lvl rhsty) :: env in
+    typ lvl letenv body
+| FixE (fname, Abs (id, body)) ->
+    let ptyv       = VarTy (new_typevar lvl) in
+    let rtyv       = VarTy (new_typevar lvl) in
+    let f_body_env =
+      (id, TypeScheme ([], ptyv))
+        :: (fname, TypeScheme ([], FunTy (ptyv, rtyv)))
+        :: env in
+    let rtyp = typ lvl f_body_env body in
+    unify rtyp rtyv;
+    FunTy (ptyv, rtyv)
+| CondE [] -> failwith "CondE with empty cond list"
+| CondE ((guard, body) :: rest) ->
+    let rec iter body_ty = function
+    | [] -> body_ty
+    | (guard, body) :: rest ->
+        let guard_ty = typ lvl env guard in
+        unify guard_ty BoolTy;
+        let body_ty' = typ lvl env body in
+        unify body_ty body_ty';
+        iter body_ty rest
+    in
+    let guard_ty = typ lvl env guard in
+    unify guard_ty BoolTy;
+    let body_ty = typ lvl env body in
+    iter body_ty rest
 
-let stdenv = 
+| e -> raise (NotImplemented e)
+
+let stdenv =
   let arith_op_ty = TypeScheme ([], FunTy (IntTy, FunTy (IntTy, IntTy))) in
   let ref0 id = ref (NoLink id, 0) in
 

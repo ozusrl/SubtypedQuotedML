@@ -323,7 +323,8 @@ let stdenv =
 
   List.map (fun id -> (id, arith_op_ty)) [ "+"; "-"; "*"; "/" ]
     @ [ ("=", TypeScheme ( [ ref0 "a" ]
-                         , FunTy (VarTy (ref0 "a"), VarTy (ref0 "a")) ))
+                         , FunTy (VarTy (ref0 "a"), FunTy ( VarTy (ref0 "a")
+                                                          , VarTy (ref0 "a")))))
       ; ("::", TypeScheme ( [ ref0 "a"]
                           , FunTy ( VarTy (ref0 "a")
                                   , FunTy ( ListTy (VarTy (ref0 "a"))
@@ -333,9 +334,11 @@ let stdenv =
                                     , VarTy (ref0 "a"))))
       ; ("tail", TypeScheme ( [ ref0 "a" ]
                             , FunTy ( ListTy (VarTy (ref0 "a"))
-                                    , VarTy (ref0 "a"))))
+                                    , ListTy (VarTy (ref0 "a")))))
       ; ("empty", TypeScheme ( [ ref0 "a" ]
                              , FunTy (ListTy (VarTy (ref0 "a")), BoolTy)))
       ; ("nth", TypeScheme ( [ ref0 "a" ]
-                           , FunTy (IntTy, ListTy (VarTy (ref0 "a")))))
+                           , FunTy ( IntTy
+                                   , FunTy ( ListTy (VarTy (ref0 "a"))
+                                           , VarTy (ref0 "a")))))
       ]

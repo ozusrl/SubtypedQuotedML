@@ -183,14 +183,21 @@ and unify_recs_one_row lvl fields1 row fields2 =
   | [], [] -> ()
   | (id1, ty1) :: _, [] ->
       failwith (Printf.sprintf "can't unify record field %s." id1)
+  | [], (id2, ty2) :: r2 ->
+      unify lvl row (RecTy ([id2, ty2], Some (new_typevar lvl)));
+      unify_recs_one_row lvl [] row r2
   | (id1, ty1) :: r1, (id2, ty2) :: r2 ->
       (match compare id1 id2 with
-      | -1 -> unify_recs_one_row lvl r1 row ((id2, ty2) :: r2)
-      |  0 -> unify lvl ty1 ty2; unify_recs_one_row lvl r1 row r2
+      | -1 ->
+          (*unify_recs_one_row lvl r1 row ((id2, ty2) :: r2)*)
+          failwith (Printf.sprintf "unify_recs_one_row: can't unify id %s." id1)
+      |  0 ->
+          unify lvl ty1 ty2; unify_recs_one_row lvl r1 row r2
       |  1 ->
           unify lvl row (RecTy ([(id2, ty2)], Some (new_typevar lvl)));
-          unify_recs_one_row lvl r1 row r2
-      | _ -> failwith"")
+          unify_recs_one_row lvl ((id1, ty1) :: r1) row r2
+          (*unify_recs_one_row lvl r1 row ((id2, ty2) :: r2)*)
+      |  _ -> failwith"")
 
 and unify_recs_two_row lvl fields1 row1 fields2 row2 =
   match field_sort fields1, field_sort fields2 with
@@ -211,7 +218,6 @@ and unify_recs_two_row lvl fields1 row1 fields2 row2 =
       |  1 ->
           unify lvl row1 (RecTy ([(id2, ty2)], Some (new_typevar lvl)));
           unify_recs_two_row lvl ((id1, ty1) :: r1) row1 r2 row2)
-
 
 and unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
   let t1' = norm_ty t1 in

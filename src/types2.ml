@@ -189,14 +189,12 @@ and unify_recs_one_row lvl fields1 row fields2 =
   | (id1, ty1) :: r1, (id2, ty2) :: r2 ->
       (match compare id1 id2 with
       | -1 ->
-          (*unify_recs_one_row lvl r1 row ((id2, ty2) :: r2)*)
           failwith (Printf.sprintf "unify_recs_one_row: can't unify id %s." id1)
       |  0 ->
           unify lvl ty1 ty2; unify_recs_one_row lvl r1 row r2
       |  1 ->
           unify lvl row (RecTy ([(id2, ty2)], Some (new_typevar lvl)));
           unify_recs_one_row lvl ((id1, ty1) :: r1) row r2
-          (*unify_recs_one_row lvl r1 row ((id2, ty2) :: r2)*)
       |  _ -> failwith"")
 
 and unify_recs_two_row lvl fields1 row1 fields2 row2 =

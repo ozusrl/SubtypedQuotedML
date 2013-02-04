@@ -54,7 +54,15 @@ exp:
   | UNBOX exp                   { UnboxE $2 }
   | RUN exp                     { RunE $2 }
   | LIFT exp                    { LiftE $2 }
+
+  | LP PLUS RP                  { IdE "+" }
+  | LP MINUS RP                 { IdE "-" }
+  | LP MULT RP                  { IdE "*" }
+  | LP DIV RP                   { IdE "/" }
+  | LP EQ RP                    { IdE "=" }
+  | LP CONS RP                  { IdE "::" }
   | LP exp RP                   { $2 }
+
   | IF exp THEN exp             { CondE ( [ ($2, $4) ] ) }
   | IF exp THEN exp ELSE exp    { CondE ( [ ($2, $4); (ConstE (CBool true), $6) ] ) }
   | lst                         { $1 }

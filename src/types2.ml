@@ -14,13 +14,20 @@ let rec unique = function
 | [] -> []
 | x :: xr -> if List.mem x xr then unique xr else x :: unique xr
 
+module IdSet = Set.Make(struct
+    let compare = Pervasives.compare
+    type t = string
+end)
+
 type ty =
   | IntTy
   | BoolTy
-  | FunTy of (ty * ty)
-  | VarTy of typevar
+  | FunTy  of (ty * ty)
+  | VarTy  of typevar
   | ListTy of ty
-  | RecTy of (field list * rowvar option)
+  | RecTy  of ty
+  | Row    of (id * ty * ty)
+  | EmptyRow
 
 and typevar = (tyvarkind * int) ref
 
@@ -28,9 +35,7 @@ and tyvarkind =
   | NoLink of string  (* just a type variable *)
   | LinkTo of ty      (* equated to type ty *)
 
-and field = (id * ty)
-
-and rowvar = typevar
+(*and rowvar = typevar*)
   with sexp
 
 type tyscm = TypeScheme of (typevar list * ty) with sexp
@@ -81,16 +86,16 @@ let instantiate lvl (TypeScheme (tvs, t)) : ty =
     | VarTy link, ((l, t) :: rest) ->
         if link = l then t else subst ty rest
     | ListTy ty, ss -> ListTy (subst ty ss)
-    | RecTy (fields, rowvar), ss ->
-        let rec inst_fields = function
-        | [] -> []
-        | (id, ty) :: rest -> (id, subst ty ss) :: inst_fields rest
+    | RecTy rows, ss ->
+        let rec inst_rows = function
+        | EmptyRow -> EmptyRow
+        | Row (id, ty, nextrow) ->
+            Row (id, subst ty ss, (inst_rows nextrow))
+        | VarTy ty -> subst (VarTy ty) ss
+        | _ -> failwith "instantiate: non-row type in RecTy"
         in
-        match rowvar with
-        | None -> RecTy (inst_fields fields, None)
-        | Some row ->
-            let (VarTy instrow) = subst (VarTy row) ss in
-            RecTy (inst_fields fields, Some instrow)
+        RecTy (inst_rows rows)
+    | _ -> failwith "instantiate: row types outside RecTy"
     in
     subst t ss
 
@@ -125,14 +130,16 @@ let rec freetyvars t : typevar list = match norm_ty t with
 | FunTy (t1, t2) -> union (freetyvars t1) (freetyvars t2)
 | VarTy tv       -> [tv]
 | ListTy t1      -> freetyvars t1
-| RecTy (fields, rowvar) ->
-    let rec tyvars_of_fields = function
-    | [] -> []
-    | (_, ty) :: rest -> freetyvars ty @ tyvars_of_fields rest
+| RecTy rows ->
+    let rec tyvars_of_rows = function
+    | EmptyRow -> []
+    | Row (_, ty, nextrow) ->
+        freetyvars ty @ tyvars_of_rows nextrow
+    | VarTy tv -> [tv]
+    | _ -> failwith "freetyvars: non-row type in RecTy"
     in
-    match rowvar with
-    | Some typevar -> tyvars_of_fields fields @ freetyvars (VarTy typevar)
-    | None -> tyvars_of_fields fields
+    tyvars_of_rows rows
+| _ -> failwith "freetyvars: row types outside RecTy"
 
 let rec generalize lvl (t : ty) : tyscm =
   let notfreeincontext tyvar =
@@ -165,57 +172,55 @@ let field_sort fields =
   let sort_fn (id1, _) (id2, _) = compare id1 id2 in
   List.sort sort_fn fields
 
-let rec unify_recs_concrete lvl fields1 fields2 =
-  match field_sort fields1, field_sort fields2 with
-  | [], [] -> ()
-  | [], (id, _) :: _
-  | (id, _) :: _, [] ->
-      failwith (Printf.sprintf "can't unify record field %s." id)
-  | (id1, ty1) :: r1, (id2, ty2) :: r2 ->
-      if id1 = id2 then
-        let _ = unify lvl ty1 ty2 in
-        unify_recs_concrete lvl r1 r2
-      else
-        failwith (Printf.sprintf "can't unify record fields %s and %s." id1 id2)
+let rec unify_rows (lvl : int) rows1 rows2 =
+  let rec row_ids = function
+  | EmptyRow -> []
+  | VarTy _ -> []
+  | Row (id, _, nextrow) -> id :: row_ids nextrow
+  | _ -> failwith "row_ids: non-row ty"
+  in
 
-and unify_recs_one_row lvl fields1 row fields2 =
-  match field_sort fields1, field_sort fields2 with
-  | [], [] -> ()
-  | (id1, ty1) :: _, [] ->
-      failwith (Printf.sprintf "can't unify record field %s." id1)
-  | [], (id2, ty2) :: r2 ->
-      unify lvl row (RecTy ([id2, ty2], Some (new_typevar lvl)));
-      unify_recs_one_row lvl [] row r2
-  | (id1, ty1) :: r1, (id2, ty2) :: r2 ->
-      (match compare id1 id2 with
-      | -1 ->
-          failwith (Printf.sprintf "unify_recs_one_row: can't unify id %s." id1)
-      |  0 ->
-          unify lvl ty1 ty2; unify_recs_one_row lvl r1 row r2
-      |  1 ->
-          unify lvl row (RecTy ([(id2, ty2)], Some (new_typevar lvl)));
-          unify_recs_one_row lvl ((id1, ty1) :: r1) row r2
-      |  _ -> failwith"")
+  let rec get_id_ty id = function
+  | VarTy t -> VarTy t
+  | Row (id', ty, nextrow) ->
+    if id' = id then ty else get_id_ty id nextrow
+  | _ -> failwith "kesisim olmasina ragmen id yok ???"
+  in
 
-and unify_recs_two_row lvl fields1 row1 fields2 row2 =
-  match field_sort fields1, field_sort fields2 with
-  | [], [] -> ()
-  | (id1, ty1) :: r1, [] ->
-      unify lvl row2 (RecTy ([id1, ty1], Some (new_typevar lvl)));
-      unify_recs_two_row lvl r1 row1 [] row2
-  | [], (id2, ty2) :: r2 ->
-      unify lvl row1 (RecTy ([id2, ty2], Some (new_typevar lvl)));
-  | (id1, ty1) :: r1, (id2, ty2) :: r2 ->
-      (match compare id1 id2 with
-      | -1 ->
-          unify lvl row2 (RecTy ([(id1, ty1)], Some (new_typevar lvl)));
-          unify_recs_two_row lvl r1 row1 ((id2, ty2) :: r2) row2
-      |  0 ->
-          unify lvl ty1 ty2;
-          unify_recs_two_row lvl r1 row1 r2 row2
-      |  1 ->
-          unify lvl row1 (RecTy ([(id2, ty2)], Some (new_typevar lvl)));
-          unify_recs_two_row lvl ((id1, ty1) :: r1) row1 r2 row2)
+  let rec get_row_var = function
+  | VarTy ty -> Some (VarTy ty)
+  | Row (id, _, nextrow) -> get_row_var nextrow
+  | _ -> None
+  in
+
+  let ids1 = List.fold_right IdSet.add (row_ids rows1) IdSet.empty in
+  let ids2 = List.fold_right IdSet.add (row_ids rows2) IdSet.empty in
+
+  let df1 = IdSet.diff ids1 ids2 in
+  let row1 = get_row_var rows1 in
+
+  let df2 = IdSet.diff ids2 ids2 in
+  let row2 = get_row_var rows2 in
+
+  match row1 with
+  | None ->
+      if not (IdSet.is_empty df2) then failwith "unify with concrete rec"
+  | _ -> ();
+
+  match row2 with
+  | None ->
+      if not (IdSet.is_empty df1) then failwith "unify with concrete rec";
+  | _ -> ();
+
+  let intersect = IdSet.inter ids1 ids2 in
+
+  (* unify intersection *)
+  IdSet.iter
+    (fun id -> unify lvl (get_id_ty id rows1) (get_id_ty id rows2))
+    intersect;
+
+  (* unify differences *)
+  (* TODO *)
 
 and unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
   let t1' = norm_ty t1 in
@@ -237,15 +242,12 @@ and unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
   | ListTy tv1, ListTy tv2 -> unify lvl tv1 tv2
   | VarTy tv1, _ -> link_to_ty tv1 t2'
   | _, VarTy tv2 -> link_to_ty tv2 t1'
-
-  | RecTy (fields1, None), RecTy (fields2, None) ->
-      unify_recs_concrete lvl fields1 fields2
-  | RecTy (fields1, Some var1), RecTy (fields2, None) ->
-      unify_recs_one_row lvl fields1 (VarTy var1) fields2
-  | RecTy (fields1, None), RecTy (fields2, Some var2) ->
-      unify_recs_one_row lvl fields2 (VarTy var2) fields1
-  | RecTy (fields1, Some var1), RecTy (fields2, Some var2) ->
-      unify_recs_two_row lvl fields1 (VarTy var1) fields2 (VarTy var2)
+ 
+  | EmptyRow, EmptyRow -> ()
+  | EmptyRow, _
+  | _, EmptyRow -> failwith "unify EmptyRow"
+  | Row row1, Row row2 -> unify_rows lvl (Row row1) (Row row2)
+  | RecTy row1, RecTy row2 -> unify_rows lvl row1 row2
 
   | t1, t2 -> failwith (Printf.sprintf "type error: %s and %s."
                   (show_type t1) (show_type t2))
@@ -297,18 +299,18 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
     iter body_ty rest
 
 (* records --------------------------------------- *)
-| RecE fields ->
-    let rec typ_of_fields lvl env = function
-    | [] -> []
+| RecE rows ->
+    let rec typ_of_rows lvl env = function
+    | [] -> EmptyRow
     | (id, exp) :: rest ->
-        (id, typ lvl env exp) :: typ_of_fields lvl env rest
+        Row (id, typ lvl env exp, typ_of_rows lvl env rest)
     in
-    RecTy (typ_of_fields lvl env fields, None)
+    RecTy (typ_of_rows lvl env rows)
 
 | SelectE (exp, id) ->
-    let expty = typ lvl env exp in
+    let expty   = typ lvl env exp in
     let fieldty = VarTy (new_typevar lvl) in
-    unify lvl expty (RecTy ([(id, fieldty)], Some (new_typevar lvl)));
+    unify lvl expty (RecTy (Row (id, fieldty, VarTy (new_typevar lvl))));
     fieldty
 
 | RecUpdE (exp, id, newexp) as e -> raise (NotImplemented e)

@@ -318,7 +318,6 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
 
     RecTy (add_or_replace id extty expty)
 
-
 (* staged computations *)
 | ValueE _  | BoxE _  | UnboxE _  | RunE _  | LiftE _ as e ->
     raise (NotImplemented e)
@@ -330,7 +329,7 @@ let stdenv =
   List.map (fun id -> (id, arith_op_ty)) [ "+"; "-"; "*"; "/" ]
     @ [ ("=", TypeScheme ( [ ref0 "a" ]
                          , FunTy (VarTy (ref0 "a"), FunTy ( VarTy (ref0 "a")
-                                                          , VarTy (ref0 "a")))))
+                                                          , BoolTy))))
       ; ("::", TypeScheme ( [ ref0 "a"]
                           , FunTy ( VarTy (ref0 "a")
                                   , FunTy ( ListTy (VarTy (ref0 "a"))

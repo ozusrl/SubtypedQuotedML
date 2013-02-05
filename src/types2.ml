@@ -34,8 +34,6 @@ and typevar = (tyvarkind * int) ref
 and tyvarkind =
   | NoLink of string  (* just a type variable *)
   | LinkTo of ty      (* equated to type ty *)
-
-(*and rowvar = typevar*)
   with sexp
 
 type tyscm = TypeScheme of (typevar list * ty) with sexp
@@ -86,16 +84,10 @@ let instantiate lvl (TypeScheme (tvs, t)) : ty =
     | VarTy link, ((l, t) :: rest) ->
         if link = l then t else subst ty rest
     | ListTy ty, ss -> ListTy (subst ty ss)
-    | RecTy rows, ss ->
-        let rec inst_rows = function
-        | EmptyRow -> EmptyRow
-        | Row (id, ty, nextrow) ->
-            Row (id, subst ty ss, (inst_rows nextrow))
-        | VarTy ty -> subst (VarTy ty) ss
-        | _ -> failwith "instantiate: non-row type in RecTy"
-        in
-        RecTy (inst_rows rows)
-    | _ -> failwith "instantiate: row types outside RecTy"
+    | RecTy row, ss -> RecTy (subst row ss)
+    | EmptyRow, _ -> EmptyRow
+    | Row (id, ty, nextrow), ss ->
+        Row (id, subst ty ss, (subst nextrow ss))
     in
     subst t ss
 

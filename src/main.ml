@@ -29,6 +29,16 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
         with exc -> print_endline (Printexc.to_string exc); None
       in
 
+      (* print type of translation *)
+      (match translation with
+      | Some t ->
+        (try
+          let ty2 = Types2.typ 0 Types2.stdenv t in
+          Printf.printf "type of translation: %s\n---\n" (Types2.show_type ty2);
+        with exc -> print_endline
+          ("exception in types2: " ^ Printexc.to_string exc))
+      | _ -> ());
+
       (* eval value and print *)
       (try
         let value = Eval1.eval stdenv exp in

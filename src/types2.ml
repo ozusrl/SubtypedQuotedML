@@ -297,7 +297,27 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
     unify lvl expty (RecTy (Row (id, fieldty, VarTy (new_typevar lvl))));
     fieldty
 
-| RecUpdE (exp, id, newexp) as e -> raise (NotImplemented e)
+| RecUpdE (exp, id, extexp) ->
+    let expty = typ lvl env exp in
+
+    let rec add_or_replace id ty = function
+    | RecTy t -> add_or_replace id ty t
+    | Row (id', ty', nextrow) ->
+        if id' = id then
+          Row (id', ty, nextrow)
+        else
+          Row (id', ty', add_or_replace id ty nextrow)
+    | EmptyRow -> Row (id, ty, EmptyRow)
+    | VarTy t  ->
+        let row_var = new_typevar lvl in
+        unify lvl (VarTy t) (RecTy (VarTy row_var));
+        Row (id, ty, VarTy row_var)
+    | _ -> failwith "non-row type in add_or_replace"
+    in
+    let extty = typ lvl env extexp in
+
+    RecTy (add_or_replace id extty expty)
+
 
 (* staged computations *)
 | ValueE _  | BoxE _  | UnboxE _  | RunE _  | LiftE _ as e ->

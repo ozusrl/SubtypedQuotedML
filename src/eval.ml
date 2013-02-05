@@ -1,5 +1,4 @@
 open Common
-open Types
 
 exception StageException
 exception Failure of string

@@ -5,7 +5,7 @@ open Eval
 let rec parse_and_eval_exprs ?(repl = false) lexbuf =
   try
     let exp = Parser.main Lexer.mytoken lexbuf in
-    Printf.printf "Parsed expr: %s\n" (show_exp exp);
+    (*Printf.printf "Parsed expr: %s\n" (show_exp exp);*)
 
     try
       (* infer type and print *)
@@ -44,7 +44,7 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
       (match translation with
       | None -> ()
       | Some t ->
-        Printf.printf "Translation: %s\n" (show_exp t);
+        (*Printf.printf "Translation: %s\n" (show_exp t);*)
         try
           let value2 = Eval2.eval stdenv t in
           Printf.printf "Return value of translation in popl 11: %s\n\n\n"

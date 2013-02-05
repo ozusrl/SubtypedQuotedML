@@ -112,34 +112,15 @@ let rec norm_ty = function
   | _ -> VarTy tyvar)
 | t -> t
 
-(*let rec norm_ty = function
-| IntTy -> IntTy
-| BoolTy -> BoolTy
-| FunTy (t1, t2) -> FunTy (norm_ty t1, norm_ty t2)
-| VarTy tyvar -> (match !tyvar with
-  | LinkTo t1, _ ->
-      let t2 = norm_ty t1 in
-      set_tvkind tyvar (LinkTo t2);
-      t2
-  | _ -> VarTy tyvar)
-| ListTy t -> ListTy (norm_ty t)*)
-
 let rec freetyvars t : typevar list = match norm_ty t with
 | IntTy          -> []
 | BoolTy         -> []
 | FunTy (t1, t2) -> union (freetyvars t1) (freetyvars t2)
 | VarTy tv       -> [tv]
 | ListTy t1      -> freetyvars t1
-| RecTy rows ->
-    let rec tyvars_of_rows = function
-    | EmptyRow -> []
-    | Row (_, ty, nextrow) ->
-        freetyvars ty @ tyvars_of_rows nextrow
-    | VarTy tv -> [tv]
-    | _ -> failwith "freetyvars: non-row type in RecTy"
-    in
-    tyvars_of_rows rows
-| _ -> failwith "freetyvars: row types outside RecTy"
+| RecTy rows     -> freetyvars rows
+| Row (_, ty, nextrow) -> freetyvars ty @ freetyvars nextrow
+| EmptyRow       -> []
 
 let rec generalize lvl (t : ty) : tyscm =
   let notfreeincontext tyvar =
@@ -199,18 +180,14 @@ let rec unify_rows (lvl : int) rows1 rows2 =
   let df1 = IdSet.diff ids1 ids2 in
   let row1 = get_row_var rows1 in
 
-  let df2 = IdSet.diff ids2 ids2 in
+  let df2 = IdSet.diff ids2 ids1 in
   let row2 = get_row_var rows2 in
 
-  match row1 with
-  | None ->
-      if not (IdSet.is_empty df2) then failwith "unify with concrete rec"
-  | _ -> ();
 
-  match row2 with
-  | None ->
-      if not (IdSet.is_empty df1) then failwith "unify with concrete rec";
-  | _ -> ();
+  if row1 = None && not (IdSet.is_empty df2)
+    then failwith "unify with concrete rec";
+  if row2 = None && not (IdSet.is_empty df1)
+    then failwith "unify with concrete rec";
 
   let intersect = IdSet.inter ids1 ids2 in
 
@@ -220,7 +197,14 @@ let rec unify_rows (lvl : int) rows1 rows2 =
     intersect;
 
   (* unify differences *)
-  (* TODO *)
+  IdSet.iter (fun id ->
+    let (Some row) = get_row_var rows1 in
+    unify lvl row (Row (id, get_id_ty id rows2, VarTy (new_typevar lvl)))) df2;
+
+  IdSet.iter (fun id ->
+    let (Some row) = get_row_var rows2 in
+    unify lvl row (Row (id, get_id_ty id rows1, VarTy (new_typevar lvl)))) df1;
+
 
 and unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
   let t1' = norm_ty t1 in

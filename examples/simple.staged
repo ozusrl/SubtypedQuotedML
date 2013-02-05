@@ -1,5 +1,5 @@
 let fac = fix fac n -> if n = 0 then 1 else n * fac (n-1) in fac 5;
-let fac_staged = fix fac n -> if n = 0 then <1> else <~n * ~(fac (n-1))> in fac_staged 4;
+let fac_staged = fix fac n -> if n = 0 then <1> else <~lift(n) * ~(fac (n-1))> in fac_staged 4;
 
 let pow_gen =
   fun n ->

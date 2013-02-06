@@ -41,28 +41,28 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
 
       (* eval value and print *)
       (try
-        let value = Eval1.eval stdenv exp in
-        Printf.printf "Return value in popl 06: %s\n" (show_val value);
+        let value = StagedEval.eval stdenv exp in
+        Printf.printf "Return value in staged calc: %s\n" (show_val value);
       with exc -> print_endline
-        ("error while running popl 06: " ^ Printexc.to_string exc));
+        ("error while running staged calc: " ^ Printexc.to_string exc));
 
       (try
-        let value = Eval2.eval stdenv exp in
-        Printf.printf "Return value in popl 11: %s\n" (show_val value);
-      with exc -> print_endline ("error while running popl 11: " ^ Printexc.to_string exc));
+        let value = RecordEval.eval stdenv exp in
+        Printf.printf "Return value in record calc: %s\n" (show_val value);
+      with exc -> print_endline ("error while running record calc: " ^ Printexc.to_string exc));
 
       (match translation with
       | None -> ()
       | Some t ->
         (*Printf.printf "Translation: %s\n" (show_exp t);*)
         try
-          let value2 = Eval2.eval stdenv t in
-          Printf.printf "Return value of translation in popl 11: %s\n\n\n"
+          let value2 = RecordEval.eval stdenv t in
+          Printf.printf "Return value of translation in record calc: %s\n\n\n"
             (show_val value2)
         with TypeMismatch (expected, found) ->
                Printf.printf "TypeMismatch: expected: %s, found: %s.\n" expected found
            | exc ->
-               print_endline ("error while running popl 11: " ^ (Printexc.to_string exc)));
+               print_endline ("error while running record calc: " ^ (Printexc.to_string exc)));
 
       (* run only one expression when in repl *)
       if not repl then parse_and_eval_exprs lexbuf

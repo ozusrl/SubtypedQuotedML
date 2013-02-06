@@ -6,11 +6,10 @@ exception UnsupportedExp of exp
 exception SelectException of (exp * id)
 
 module type Eval = sig
-  val eval        : value env -> exp -> value
-  val eval_staged : value env -> exp -> int -> exp
+  val eval : value env -> exp -> value
 end
 
-module EvalBase (EvalFail : Eval) : Eval = struct
+module EvalBase (EvalExtend : Eval) : Eval = struct
 
   (* Eval {{{ *********************************************************)
 
@@ -42,6 +41,33 @@ module EvalBase (EvalFail : Eval) : Eval = struct
     | ConstV (CBool true) -> eval env e
     | _ -> eval env (CondE r))
 
+  | e -> EvalExtend.eval env e
+
+  (* Eval }}} *********************************************************)
+
+  (* Function application {{{ *****************************************)
+  and apply f arg =
+    let apply_stdfun stdfun arg = match stdfun with
+    | StdCurry (id, fn) -> ClosV (StdFun (fn arg))
+    | StdFunction (id, fn) -> fn arg
+    in
+    match f with
+    | ClosV (StdFun stdfun) -> apply_stdfun stdfun arg
+    | ClosV (Closure (env, id, body)) ->
+        let env' = bind_value env id arg in
+        eval env' body
+    | not_clos -> raise (TypeMismatch ("FunTy", val_type not_clos))
+
+  (* Function application }}} *****************************************)
+
+end
+
+(* evaluator for the staged calculus *)
+module rec StagedEval : Eval = struct
+
+  module CoreEval = EvalBase(StagedEval)
+
+  let rec eval env = function
   | BoxE exp    -> BoxV (eval_staged env exp 1)
   | RunE exp -> (match eval env exp with
     | BoxV code -> eval stdenv code
@@ -50,13 +76,11 @@ module EvalBase (EvalFail : Eval) : Eval = struct
   | UnboxE _ -> failwith "can't unbox in stage 0"
   | LiftE exp -> BoxV (ValueE (eval env exp))
   | ValueE v -> v
-  | e -> EvalFail.eval env e
 
-  (* Eval }}} *********************************************************)
+  | exp -> CoreEval.eval env exp
 
   (* Staged computations {{{ *****************************************)
-
-  and eval_staged env exp n = (match exp with
+  and eval_staged env exp n = match exp with
   | IdE id -> IdE id
   | ConstE e -> ConstE e
   | EmpLstE -> EmpLstE
@@ -74,7 +98,6 @@ module EvalBase (EvalFail : Eval) : Eval = struct
       let cond_rest = (match eval_staged env (CondE r) n with
       | CondE e -> e
       | _ -> failwith "") in (* suppress warning *)
-      (*let (CondE cond_rest) = eval_staged env (CondE r) n in*)
       CondE ((g', b') :: cond_rest)
 
   | ValueE v -> ValueE v
@@ -92,53 +115,16 @@ module EvalBase (EvalFail : Eval) : Eval = struct
   | RunE exp -> RunE (eval_staged env exp n)
   | LiftE exp -> LiftE (eval_staged env exp n)
 
-  | e -> EvalFail.eval_staged env exp n)
-
+  | e -> failwith ("Unrecognized expression " ^ (show_exp e) ^ " in eval_staged.")
   (* Staged computations }}} ******************************************)
-
-  (* Function application {{{ *****************************************)
-
-  and apply f arg =
-    let apply_stdfun stdfun arg = match stdfun with
-    | StdCurry (id, fn) -> ClosV (StdFun (fn arg))
-    | StdFunction (id, fn) -> fn arg
-    in
-    match f with
-    | ClosV (StdFun stdfun) -> apply_stdfun stdfun arg
-    | ClosV (Closure (env, id, body)) ->
-        let env' = bind_value env id arg in
-        eval env' body
-    | not_clos -> raise (TypeMismatch ("FunTy", val_type not_clos))
-
-  (* Function application }}} *****************************************)
-
-end
-
-(* evaluator for popl 06 *)
-module Eval1 : Eval = struct
-
-  module Eval1Fail : Eval = struct
-    let eval _ exp = raise (UnsupportedExp exp)
-    let eval_staged _ exp _ = raise (UnsupportedExp exp)
-  end
-
-  module Eval = EvalBase(Eval1Fail)
-
-  let eval        = Eval.eval
-  let eval_staged = Eval.eval_staged
-
+  
 end
 
 
-(* evaluator for popl 11 *)
-module rec Eval2 : Eval = struct
+(* evaluator for the record calculus *)
+module rec RecordEval : Eval = struct
 
-  module Eval2Fail : Eval = struct
-    let eval = Eval2.eval
-    let eval_staged = Eval2.eval_staged
-  end
-
-  module Fail = EvalBase(Eval2Fail)
+  module CoreEval = EvalBase(RecordEval)
 
   let rec eval env = function
   | RecE fields ->
@@ -154,10 +140,6 @@ module rec Eval2 : Eval = struct
     | RecV fields -> RecV ((id, eval env value) :: fields)
     | not_rec -> raise (TypeMismatch ("RecTy", val_type not_rec)))
 
-
-  | exp -> Fail.eval env exp
-
-  let eval_staged env exp n =
-    failwith "staged computations are not supported in this language"
+  | exp -> CoreEval.eval env exp
 
 end

@@ -30,6 +30,6 @@ in dot [1;2;3] [3;4;5];
 let prod =
   let rec gen n =
     if n = 0 then << 0 >>
-    else << nth ~(lift(~(lift(n)))) w * ~(lift(nth ~(lift(n)) v)) + ~(~(gen (n-1))) >>
+    else << nth ~(lift(~(lift(n-1)))) w * ~(lift(nth ~(lift(n-1)) v)) + ~(~(gen (n-1))) >>
   in fun n -> < fun v -> ~(gen n) >
 in run(< fun w -> ~(run (prod 2) [5; 7]) >) [2; 3];

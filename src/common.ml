@@ -136,7 +136,7 @@ let stdenv =
 
   let nth = ClosV (StdFun (StdCurry ("nth", function
     | ConstV (CInt n) -> StdFunction ("nth", function
-      | ListV lst -> List.nth lst (n-1)
+      | ListV lst -> List.nth lst n
       | not_list  -> raise (TypeMismatch ("TyList", val_type not_list)))
     | not_int -> raise (TypeMismatch ("TyInt", val_type not_int)))))
   in

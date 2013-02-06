@@ -41,13 +41,13 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
 
       (* eval value and print *)
       (try
-        let value = StagedEval.eval stdenv exp in
+        let value = StagedEval.run exp in
         Printf.printf "Return value in staged calc: %s\n" (show_val value);
       with exc -> print_endline
         ("error while running staged calc: " ^ Printexc.to_string exc));
 
       (try
-        let value = RecordEval.eval stdenv exp in
+        let value = RecordEval.run exp in
         Printf.printf "Return value in record calc: %s\n" (show_val value);
       with exc -> print_endline ("error while running record calc: " ^ Printexc.to_string exc));
 
@@ -56,7 +56,7 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
       | Some t ->
         (*Printf.printf "Translation: %s\n" (show_exp t);*)
         try
-          let value2 = RecordEval.eval stdenv t in
+          let value2 = RecordEval.run t in
           Printf.printf "Return value of translation in record calc: %s\n\n\n"
             (show_val value2)
         with TypeMismatch (expected, found) ->

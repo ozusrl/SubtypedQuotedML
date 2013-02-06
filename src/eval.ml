@@ -7,6 +7,7 @@ exception SelectException of (exp * id)
 
 module type Eval = sig
   val eval : value env -> exp -> value
+  val run : exp -> value
 end
 
 module EvalBase (EvalExtend : Eval) : Eval = struct
@@ -60,6 +61,8 @@ module EvalBase (EvalExtend : Eval) : Eval = struct
 
   (* Function application }}} *****************************************)
 
+  let run exp = eval stdenv exp
+  
 end
 
 (* evaluator for the staged calculus *)
@@ -69,15 +72,15 @@ module rec StagedEval : Eval = struct
 
   let rec eval env = function
   | BoxE exp    -> BoxV (eval_staged env exp 1)
-  | RunE exp -> (match eval env exp with
-    | BoxV code -> eval stdenv code
+  | RunE exp -> (match CoreEval.eval env exp with
+    | BoxV code -> CoreEval.eval stdenv code
     | not_code -> raise (TypeMismatch ("CodeTy", val_type not_code)))
 
   | UnboxE _ -> failwith "can't unbox in stage 0"
-  | LiftE exp -> BoxV (ValueE (eval env exp))
+  | LiftE exp -> BoxV (ValueE (CoreEval.eval env exp))
   | ValueE v -> v
 
-  | exp -> CoreEval.eval env exp
+  | exp -> failwith ("Unrecognized expression " ^ (show_exp exp) ^ " in StagedEval.eval.")
 
   (* Staged computations {{{ *****************************************)
   and eval_staged env exp n = match exp with
@@ -105,7 +108,7 @@ module rec StagedEval : Eval = struct
   | UnboxE exp ->
       if n < 1 then raise StageException
       else begin if n = 1 then
-        match eval env exp with
+        match CoreEval.eval env exp with
         | BoxV exp' -> exp'
         | _ -> failwith "unboxing a non-code value"
       else
@@ -115,8 +118,10 @@ module rec StagedEval : Eval = struct
   | RunE exp -> RunE (eval_staged env exp n)
   | LiftE exp -> LiftE (eval_staged env exp n)
 
-  | e -> failwith ("Unrecognized expression " ^ (show_exp e) ^ " in eval_staged.")
+  | exp -> failwith ("Unrecognized expression " ^ (show_exp exp) ^ " in StagedEval.eval_staged.")
   (* Staged computations }}} ******************************************)
+
+  let run = CoreEval.run
   
 end
 
@@ -128,18 +133,20 @@ module rec RecordEval : Eval = struct
 
   let rec eval env = function
   | RecE fields ->
-      let field_vals = List.map (fun (id, e) -> (id, eval env e)) fields in
+      let field_vals = List.map (fun (id, e) -> (id, CoreEval.eval env e)) fields in
       RecV field_vals
-  | SelectE (record, field) -> (match eval env record with
+  | SelectE (record, field) -> (match CoreEval.eval env record with
     | RecV fields ->
         (try
           snd (List.find (fun (i, v) -> i = field) fields)
         with Not_found -> failwith ("Not_found: " ^ field))
     | not_rec -> raise (TypeMismatch ("RecTy", val_type not_rec)))
-  | RecUpdE (record, id, value) -> (match eval env record with
-    | RecV fields -> RecV ((id, eval env value) :: fields)
+  | RecUpdE (record, id, value) -> (match CoreEval.eval env record with
+    | RecV fields -> RecV ((id, CoreEval.eval env value) :: fields)
     | not_rec -> raise (TypeMismatch ("RecTy", val_type not_rec)))
 
-  | exp -> CoreEval.eval env exp
+  | exp -> failwith ("Unrecognized expression " ^ (show_exp exp) ^ " in RecordEval.eval.")
+
+  let run = CoreEval.run
 
 end

@@ -42,6 +42,16 @@ module EvalBase (EvalExtend : Eval) : Eval = struct
     | ConstV (CBool true) -> eval env e
     | _ -> eval env (CondE r))
 
+  | RefE exp -> RefV (ref (eval env exp))
+  | DerefE exp -> (match eval env exp with
+    | RefV ref -> !ref
+    | not_ref -> failwith("dereferencing a non-ref value: " ^ show_val not_ref))
+  | AssignE (e1, e2) -> (match eval env e1 with
+  | RefV ref ->
+      let v = eval env e2 in
+      ref := v; v
+    | not_ref -> failwith ("assigning to a non-ref value: " ^ show_val not_ref))
+
   | e -> EvalExtend.eval env e
 
   (* Eval }}} *********************************************************)
@@ -62,7 +72,7 @@ module EvalBase (EvalExtend : Eval) : Eval = struct
   (* Function application }}} *****************************************)
 
   let run exp = eval stdenv exp
-  
+
 end
 
 (* evaluator for the staged calculus *)
@@ -122,7 +132,7 @@ module rec StagedEval : Eval = struct
   (* Staged computations }}} ******************************************)
 
   let run = CoreEval.run
-  
+
 end
 
 

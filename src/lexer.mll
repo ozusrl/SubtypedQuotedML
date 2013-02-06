@@ -37,12 +37,15 @@ rule mytoken = parse
   | "-"        { MINUS }
   | "*"        { MULT }
   | "/"        { DIV }
+  | "!"        { BANG }
   | "::"       { CONS }
+  | ":="       { ASSIGN }
   | "if"       { IF }
   | "else"     { ELSE }
   | "then"     { THEN }
   | "lift"     { LIFT }
   | "fix"      { FIX }
+  | "ref"      { REF }
 
   | (letter (letter | numeric | '_')*) as id   { ID id }
   | numeric_plus as i  { INT (int_of_string i) }

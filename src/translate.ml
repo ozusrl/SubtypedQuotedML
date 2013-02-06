@@ -66,15 +66,15 @@ let mkStdrec init =
 (* translate multi-staged language to language with records *)
 let rec translate exp envStack : (exp * ctxs) =
   let stdrec = List.map fst stdenv in
-  
+
   let rec lookup env x =
     match env with
     | Empty -> if List.mem x stdrec then IdE x
-               else failwith ("Id " ^ x ^ " not found in the translation env.") 
+               else failwith ("Id " ^ x ^ " not found in the translation env.")
     | Rho rho -> if List.mem x stdrec then IdE x
                  else SelectE(IdE rho, x)
     | Cons(r', y) -> if x = y then IdE x else lookup r' x
-  in  
+  in
   match envStack with
   | [] -> failwith "translate: empty env list"
   | env :: rest_envs -> (match exp with
@@ -114,6 +114,17 @@ let rec translate exp envStack : (exp * ctxs) =
         let ((CondE rest), ctxs'') = translate (CondE r) envStack in
         (CondE ((g', b') :: rest), merge_ctxs ctxs (merge_ctxs ctxs' ctxs''))
 
+    | RefE exp ->
+        let exp', ctxs = translate exp envStack in
+        (RefE exp', ctxs)
+    | DerefE exp ->
+        let exp', ctxs = translate exp envStack in
+        (DerefE exp', ctxs)
+    | AssignE (e1, e2) ->
+        let e1', ctxs1 = translate e1 envStack in
+        let e2', ctxs2 = translate e2 envStack in
+        (AssignE (e1', e2'), merge_ctxs ctxs1 ctxs2)
+
     | BoxE exp ->
         let rho = env_var () in
         let newEnv = Rho rho in
@@ -134,7 +145,7 @@ let rec translate exp envStack : (exp * ctxs) =
         let exp', ctxs = translate exp envStack in
         (LetInE (Valbind (h, exp'), AppE (IdE h, RecE [])), ctxs)
 
-    | LiftE exp -> 
+    | LiftE exp ->
         let rho, h = env_var(), hole_var() in
         let exp', ctxs = translate exp envStack in
         (LetInE (Valbind (h, exp'), AbsE(Abs(rho, IdE h))), ctxs)
@@ -143,4 +154,3 @@ let rec translate exp envStack : (exp * ctxs) =
 
 
 let translate exp = translate exp [Empty]
-

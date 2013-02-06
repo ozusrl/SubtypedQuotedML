@@ -4,6 +4,7 @@
 
 %token EOF DOT FUN LP RP LB RB UNBOX RUN LET IN SEMI LT GT COMMA ARROW COLON
 %token EQ PLUS MINUS MULT DIV FIX IF THEN ELSE LIFT LBRACK RBRACK CONS REC
+%token REF BANG ASSIGN
 %token <string> ID
 %token <int>    INT
 %token <bool>   BOOL
@@ -12,6 +13,7 @@
 
 /* Assoc and precedence definitions */
 
+%right ASSIGN
 %right THEN ELSE
 %nonassoc IN ARROW
 %nonassoc CONS
@@ -23,6 +25,7 @@
 %left APP
 %nonassoc DOT
 %nonassoc UNBOX RUN LIFT
+%right REF BANG
 
 %%
 
@@ -69,7 +72,12 @@ exp:
   | record                      { $1 }
   | exp DOT ID                  { SelectE ($1, $3) }
     /* TODO: find a better record update syntax */
-  | exp DOT ID COLON EQ exp     { RecUpdE ($1, $3, $6) }
+  | LBRACK exp DOT ID EQ exp RBRACK
+                                { RecUpdE ($2, $4, $6) }
+
+  | REF exp                     { RefE $2 }
+  | BANG exp                    { DerefE $2 }
+  | exp ASSIGN exp              { AssignE ($1, $3) }
 
 func:
   | ID func                     { Abs ($1, AbsE $2) }

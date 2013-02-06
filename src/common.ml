@@ -26,6 +26,10 @@ and exp  =
   | FixE     of id * abs
   | CondE    of (exp * exp) list
 
+  | RefE     of exp
+  | DerefE   of exp
+  | AssignE  of (exp * exp)
+
   (* ValueE is returned from eval_staged when a lifted expression is unboxed *)
   | ValueE   of value
   | BoxE     of exp
@@ -53,6 +57,7 @@ and value =
   | BoxV    of exp
   | ListV   of value list
   | RecV    of (id * value) list
+  | RefV    of value ref
   | UnitV
   with sexp
 
@@ -61,7 +66,7 @@ exception NotImplemented of exp
 let show_exp exp    = to_string (sexp_of_exp exp)
 let show_val value  = to_string (sexp_of_value value)
 
-let val_type = function
+let rec val_type = function
 | ConstV (CInt _) -> "TyInt"
 | ConstV (CBool _) -> "TyBool"
 | ListV _ -> "TyList"
@@ -69,6 +74,7 @@ let val_type = function
 | BoxV _ -> "TyBox"
 | UnitV -> "TyUnit"
 | RecV _ -> "TyRec"
+| RefV v -> "TyRef " ^ val_type !v
 
 
 exception Not_bound of id

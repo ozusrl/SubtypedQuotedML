@@ -13,24 +13,22 @@ let hole_var _ =
 
 type ctx  =
   | Ctx  of (id * exp) (* hole variable, box value *)
-  | CtxL of (id * exp) list
+  | CtxL of (id * ctx * exp)
 
 type ctxs = ctx list
 
 let rec merge_ctxs ctxs1 ctxs2 =
+  let rec merge_ctx k1 k2 =
+    match k1 with
+    | Ctx(id, exp) -> CtxL(id, k2, exp)
+    | CtxL(id, k3, exp) -> CtxL(id, merge_ctx k3 k2, exp)
+  in
   let rec merge
     (ctxs1 : ctx list) (ctxs2 : ctx list) : ctx list =
     match (ctxs1, ctxs2) with
     | [], [] -> []
-    | Ctx (id, exp) :: cs1, Ctx (id', exp') :: cs2 ->
-        CtxL [(id, exp); (id', exp')] :: merge cs1 cs2
-    | Ctx (id, exp) :: cs1, CtxL l :: cs2 ->
-        CtxL ((id, exp) :: l) :: (merge cs1 cs2)
-    | CtxL l :: cs1, Ctx (id, exp) :: cs2 ->
-        CtxL (l @ [(id, exp)]) :: merge cs1 cs2
-    | CtxL l1 :: cs1, CtxL l2 :: cs2 ->
-        CtxL (l1 @ l2) :: merge cs1 cs2
-    | _ -> failwith "fail in merge (ctxs1 ctxs2 ile ayni uzunlukta degil mi?)"
+    | ctx1 :: cs1, ctx2 :: cs2 -> merge_ctx ctx1 ctx2 :: merge cs1 cs2
+    | _ -> failwith "fail in merge (ctxs1 and ctxs2 are not )"
   in
 
   let rec iter ctxs1 ctxs2 c =
@@ -50,26 +48,24 @@ let rec merge_ctxs ctxs1 ctxs2 =
 
 let rec app_of_ctx ctx body = match ctx with
 | Ctx (hole, exp) -> AppE (AbsE (Abs (hole, body)), exp)
-| CtxL [(hole, exp)] -> app_of_ctx (Ctx (hole, exp)) body
-| CtxL l -> (match List.rev l with
-  | ((hole, exp) :: ctxs) ->
-      AppE (AbsE (Abs (hole, app_of_ctx (CtxL ctxs) body)), exp))
+| CtxL (hole, k, exp) -> AppE (AbsE (Abs (hole, app_of_ctx k body)), exp)
+
 
 (* translate multi-staged language to language with records *)
-let rec translate exp : exp list -> (exp * ctx list) =
-  function
+let rec translate exp envList : (exp * ctxs) =
+  match envList with
   | [] -> failwith "translate: empty env list"
-  | env :: rest_envs as envlist -> (match exp with
+  | env :: rest_envs -> (match exp with
 
-    | IdE i -> (SelectE (env, i), [])
+    | IdE i -> (SelectE (env, i), []) (* Hmm... *)
 
     | ConstE c -> (ConstE c, [])
 
     | EmpLstE -> (EmpLstE, [])
 
     | AppE (e1, e2) ->
-        let (e1', k1) = translate e1 envlist in
-        let (e2', k2) = translate e2 envlist in
+        let (e1', k1) = translate e1 envList in
+        let (e2', k2) = translate e2 envList in
         (AppE (e1', e2'), merge_ctxs k1 k2)
 
     | AbsE (Abs (id, body)) ->
@@ -78,7 +74,7 @@ let rec translate exp : exp list -> (exp * ctx list) =
         (AbsE (Abs (id, body')), ctxs)
 
     | LetInE (Valbind (id, value), body) ->
-        let value', ctx1 = translate value envlist in
+        let value', ctx1 = translate value envList in
         let body', ctx2 =
           translate body (RecUpdE (env, id, IdE id) :: rest_envs) in
         (LetInE (Valbind (id, value'), body'), merge_ctxs ctx1 ctx2)
@@ -86,19 +82,19 @@ let rec translate exp : exp list -> (exp * ctx list) =
     | FixE (id, (Abs (arg, body))) ->
         let env' = RecUpdE (env, id, IdE id) in
         let env'' = RecUpdE (env', arg, IdE arg) in
-        let body', ctxs = translate body (env'' :: envlist) in
+        let body', ctxs = translate body (env'' :: envList) in
         (FixE (id, (Abs (arg, body'))), ctxs)
 
     | CondE [] -> (CondE [], [])
     | CondE ((g, b) :: r) ->
-        let g', ctx = translate g envlist in
-        let b', ctx' = translate b envlist in
-        let ((CondE rest), ctx'') = translate (CondE r) envlist in
-        (CondE ((g', b') :: rest), merge_ctxs ctx'' (merge_ctxs ctx ctx'))
+        let g', ctx = translate g envList in
+        let b', ctx' = translate b envList in
+        let ((CondE rest), ctx'') = translate (CondE r) envList in
+        (CondE ((g', b') :: rest), merge_ctxs ctx (merge_ctxs ctx' ctx''))
 
     | BoxE exp ->
         let var = env_var () in
-        let env' = IdE var :: envlist in
+        let env' = IdE var :: envList in
         let (exp', k) = translate exp env' in
         (match k with
          | [] -> (AbsE (Abs (var, exp')), [])
@@ -111,11 +107,12 @@ let rec translate exp : exp list -> (exp * ctx list) =
 
     | RunE exp ->
         let var = env_var () in
-        let exp', ctxs = translate exp envlist in
+        let exp', ctxs = translate exp envList in
         (LetInE (Valbind (var, exp'), AppE (IdE var, stdrec)), ctxs)
 
     | LiftE exp -> 
-        let exp', ctx = translate exp envlist in
-        (AbsE (Abs (hole_var (), exp')), ctx)
-    | ValueE v -> (ValueE v, [])
+        let rvar, hvar = env_var(), hole_var() in
+        let exp', ctx = translate exp envList in
+        (LetInE (Valbind (hvar, exp'), AbsE(Abs(rvar, IdE hvar))), ctx)
+    | ValueE v -> failwith "ValueE is not expected to occur in translation."
     | RecE _ | SelectE _ | RecUpdE _ -> failwith "record expressions in translate")

@@ -154,8 +154,4 @@ let stdenv =
   ; ("nth",   ref nth)
   ]
 
-let stdrec =
-  let mkIdE id = (id, IdE id) in
-  RecE (List.map mkIdE ["+"; "-"; "*"; "="; "::"; "head"; "tail"; "empty"; "nth"])
-
 (* Mappings of OCaml function and standard environment }}} **********)

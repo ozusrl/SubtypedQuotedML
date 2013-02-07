@@ -26,6 +26,7 @@ type ty =
   | VarTy  of typevar
   | ListTy of ty
   | RecTy  of ty
+  | RefTy  of ty
   | Row    of (id * ty * ty)
   | EmptyRow
 
@@ -77,15 +78,16 @@ let instantiate lvl (TypeScheme (tvs, t)) : ty =
   else
     let ss = List.map (fun tv -> (tv, VarTy (new_typevar lvl))) tvs in
     let rec subst ty ss = match ty, ss with
-    | ty, [] -> ty
-    | IntTy, _ -> IntTy
-    | BoolTy, _ -> BoolTy
+    | ty, []        -> ty
+    | IntTy, _      -> IntTy
+    | BoolTy, _     -> BoolTy
     | FunTy (ty1, ty2), ss -> FunTy (subst ty1 ss, subst ty2 ss)
     | VarTy link, ((l, t) :: rest) ->
         if link = l then t else subst ty rest
     | ListTy ty, ss -> ListTy (subst ty ss)
+    | RefTy t, ss   -> RefTy (subst ty ss)
     | RecTy row, ss -> RecTy (subst row ss)
-    | EmptyRow, _ -> EmptyRow
+    | EmptyRow, _   -> EmptyRow
     | Row (id, ty, nextrow), ss ->
         Row (id, subst ty ss, (subst nextrow ss))
     in
@@ -110,6 +112,7 @@ let rec freetyvars t : typevar list = match norm_ty t with
 | FunTy (t1, t2) -> union (freetyvars t1) (freetyvars t2)
 | VarTy tv       -> [tv]
 | ListTy t1      -> freetyvars t1
+| RefTy t        -> freetyvars t
 | RecTy rows     -> freetyvars rows
 | Row (_, ty, nextrow) -> freetyvars ty @ freetyvars nextrow
 | EmptyRow       -> []
@@ -216,9 +219,10 @@ and unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
         else
           link_to_ty tv2 t1'
   | ListTy tv1, ListTy tv2 -> unify lvl tv1 tv2
+  | RefTy t1, RefTy t2 -> unify lvl t1 t2
   | VarTy tv1, _ -> link_to_ty tv1 t2'
   | _, VarTy tv2 -> link_to_ty tv2 t1'
- 
+
   | EmptyRow, EmptyRow -> ()
   | EmptyRow, _
   | _, EmptyRow -> failwith "unify EmptyRow"
@@ -273,6 +277,19 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
     unify lvl guard_ty BoolTy;
     let body_ty = typ lvl env body in
     iter body_ty rest
+
+(* refs -------------------------------------------*)
+| RefE e -> RefTy (typ lvl env e)
+| DerefE e ->
+    let ref_ty = typ lvl env e in
+    let ret = VarTy (new_typevar lvl) in
+    unify lvl ref_ty (RefTy ret);
+    ret
+| AssignE (e1, e2) ->
+    let ref_ty = typ lvl env e1 in
+    let new_val_ty = typ lvl env e2 in
+    unify lvl ref_ty (RefTy new_val_ty);
+    new_val_ty
 
 (* records --------------------------------------- *)
 | RecE rows ->

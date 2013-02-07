@@ -72,8 +72,8 @@ exp:
   | record                      { $1 }
   | exp DOT ID                  { SelectE ($1, $3) }
     /* TODO: find a better record update syntax */
-  | LBRACK exp DOT ID EQ exp RBRACK
-                                { RecUpdE ($2, $4, $6) }
+  | LB LB exp DOT ID COLON exp RB RB
+                                { RecUpdE ($3, $5, $7) }
 
   | REF exp                     { RefE $2 }
   | BANG exp                    { DerefE $2 }

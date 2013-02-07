@@ -1,6 +1,6 @@
 open Common
 open Format
-
+open Types2
 
 let infix_ops = ["+"; "-"; "*"; "/"; "="; "::"]
 
@@ -213,13 +213,7 @@ and print_value = function
     open_hvbox 2;
     print_string "{";
     print_space ();
-    List.iter (fun (k,v) ->
-      open_hovbox 2;
-      print_string "k";
-      print_space ();
-      print_string "=";
-      print_space ();
-      print_value v) fields;
+    print_fields fields;
     print_space ();
     print_string "}";
     close_box ()
@@ -234,3 +228,57 @@ and print_funval = function
 | StdFun (StdFunction (id, _)) ->
     print_string ("<stdfun " ^ id ^ " >")
 | Closure (env, id, body) -> print_abs (Abs (id, body))
+
+let rec print_ty = function
+| IntTy -> print_string "int"
+| BoolTy -> print_string "bool"
+| FunTy (t1, t2) ->
+    open_hovbox 2;
+    print_ty t1;
+    print_space ();
+    print_string "->";
+    print_space ();
+    print_ty t2;
+    close_box ()
+| VarTy _ as t ->
+    (match norm_ty t with
+    | VarTy v ->
+        let (tyvarkind, _) = !v in
+        (match tyvarkind with
+        | NoLink s -> print_string ("'" ^ s)
+        | _ -> failwith"")
+    | not_var -> print_ty not_var)
+| ListTy t -> print_string "["; print_ty t; print_string "]"
+| RecTy t -> print_string "{"; print_ty t; print_string "}"
+| RefTy t -> print_string "ref("; print_ty t; print_string ")"
+| EmptyRow -> print_string "{}"
+| Row r -> print_row r
+
+and print_row row =
+  let rec row_iter = function
+  | id, ty, nextrow ->
+      open_hovbox 2;
+      print_string id;
+      print_space ();
+      print_string "=";
+      print_space ();
+      print_ty ty;
+      (match nextrow with
+      | EmptyRow -> print_string "}"
+      | Row r ->
+          print_string ";";
+          print_space ();
+          row_iter r
+      | VarTy _ as v ->
+          print_string "|";
+          print_ty v
+      | _ -> failwith"");
+      close_box ()
+  in
+  open_hovbox 2;
+  print_string "{";
+  print_space ();
+  row_iter row;
+  print_space ();
+  print_string "}";
+  close_box ()

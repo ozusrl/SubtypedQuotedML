@@ -59,6 +59,16 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
       with exc -> print_endline
         ("error while running staged calc: " ^ Printexc.to_string exc));
 
+      (try
+        let value = RecordEval.run exp in
+        print_endline "Return value in record calc:";
+        Format.print_flush ();
+        print_value value;
+        Format.print_flush ();
+        print_endline "";
+      with exc -> print_endline
+        ("error while running staged calc: " ^ Printexc.to_string exc));
+
       (match translation with
       | None -> ()
       | Some t ->

@@ -19,10 +19,10 @@ let rec print_exp = function
       print_exp e2';
       print_string ")";
       close_box ()
-  | _ -> 
+  | _ ->
       open_hovbox 2;
       print_exp e1;
-      print_break 1 4;
+      print_break 1 2;
       print_exp e2;
       close_box ())
 | AbsE abs -> print_abs abs
@@ -43,7 +43,7 @@ let rec print_exp = function
     print_string id;
     print_space ();
     print_string "->";
-    print_break 1 4;
+    print_break 1 2;
     print_abs abs;
     close_box ()
 | CondE conds ->
@@ -55,7 +55,7 @@ let rec print_exp = function
       print_exp g;
       print_space ();
       print_string "then";
-      print_break 1 4;
+      print_break 1 2;
       print_exp b;
       close_box ()
     in
@@ -79,7 +79,7 @@ let rec print_exp = function
     print_space ();
     print_exp exp;
     close_box ()
-| DerefE exp -> 
+| DerefE exp ->
     print_string "!";
     print_exp exp
 | AssignE (e1, e2) ->
@@ -87,7 +87,7 @@ let rec print_exp = function
     print_exp e1;
     print_space ();
     print_string ":=";
-    print_break 1 4;
+    print_break 1 2;
     print_exp e2;
     close_box ();
 | ValueE v -> print_value v
@@ -123,13 +123,13 @@ let rec print_exp = function
       print_string id;
       print_space ();
       print_string "=";
-      print_break 1 4;
+      print_break 1 2;
       print_exp exp;
       close_box ()
     in
     open_hovbox 2;
     print_string "{";
-    print_break 1 4;
+    print_break 1 2;
     List.iter (fun f -> print_field f) fields;
     print_break 1 0;
     print_string "}";
@@ -141,16 +141,16 @@ let rec print_exp = function
 | RecUpdE (r, id, exp) ->
     open_hovbox 2;
     print_string "{";
-    print_break 1 4;
+    print_break 1 2;
     print_exp r;
-    print_break 1 4;
+    print_break 1 2;
     print_string ":=";
-    print_break 1 4;
+    print_break 1 2;
     print_exp exp;
     print_break 1 0;
     print_string "}";
     close_box ()
-    
+
 and print_const = function
 | CInt i -> print_int i
 | CBool b -> print_bool b
@@ -163,7 +163,7 @@ and print_abs = function
     print_string id;
     print_space ();
     print_string "->";
-    print_break 1 4;
+    print_break 1 2;
     print_exp body;
     print_string ")";
     close_box ()

@@ -21,9 +21,11 @@ let rec print_exp = function
       close_box ()
   | _ ->
       open_hovbox 2;
+      print_string "(";
       print_exp e1;
       print_break 1 2;
       print_exp e2;
+      print_string ")";
       close_box ())
 | AbsE abs -> print_abs abs
 | LetInE (dec, exp) ->

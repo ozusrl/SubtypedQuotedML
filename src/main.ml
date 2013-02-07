@@ -16,11 +16,15 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
       (*Printf.printf "Type without substitution: %s\n" (Types.show_type exp_ty);*)
       (*Printf.printf "Type: %s\n" (Types.show_type ty);*)
 
-      (*(try
+      (try
         let ty2 = Types2.typ 0 Types2.stdenv exp in
-        Printf.printf "Type2: %s\n---\n" (Types2.show_type ty2);
+        print_endline "Type2:";
+        Format.print_flush ();
+        print_ty ty2;
+        Format.print_flush ();
+        print_endline "";
       with exc -> print_endline
-        ("exception in types2: " ^ Printexc.to_string exc));*)
+        ("exception in types2: " ^ Printexc.to_string exc));
 
       (* translate and print *)
       let translation =
@@ -31,14 +35,18 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
       in
 
       (* print type of translation *)
-      (*(match translation with
+      (match translation with
       | Some t ->
         (try
           let ty2 = Types2.typ 0 Types2.stdenv t in
-          Printf.printf "type of translation: %s\n---\n" (Types2.show_type ty2);
+          print_endline "type of translation:";
+          Format.print_flush ();
+          print_ty ty2;
+          Format.print_flush ();
+          print_endline "";
         with exc -> print_endline
           ("exception in types2: " ^ Printexc.to_string exc))
-      | _ -> ());*)
+      | _ -> ());
 
       (* eval value and print *)
       (try
@@ -50,11 +58,6 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
         print_endline "";
       with exc -> print_endline
         ("error while running staged calc: " ^ Printexc.to_string exc));
-
-      (*(try
-        let value = RecordEval.run exp in
-        Printf.printf "Return value in record calc: %s\n" (show_val value);
-      with exc -> print_endline ("error while running record calc: " ^ Printexc.to_string exc));*)
 
       (match translation with
       | None -> ()

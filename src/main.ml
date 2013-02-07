@@ -1,6 +1,7 @@
 open Common
 open Translate
 open Eval
+open Print
 
 let rec parse_and_eval_exprs ?(repl = false) lexbuf =
   try
@@ -42,7 +43,11 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
       (* eval value and print *)
       (try
         let value = StagedEval.run exp in
-        Printf.printf "Return value in staged calc: %s\n" (show_val value);
+        print_endline "Return value in staged calc:";
+        Format.print_flush ();
+        print_value value;
+        Format.print_flush ();
+        print_endline "";
       with exc -> print_endline
         ("error while running staged calc: " ^ Printexc.to_string exc));
 
@@ -57,13 +62,17 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
         (*Printf.printf "Translation: %s\n" (show_exp t);*)
         try
           let value2 = RecordEval.run t in
-          Printf.printf "Return value of translation in record calc: %s\n\n\n"
-            (show_val value2)
+          print_endline "Return value of translation in record calc:";
+          Format.print_flush ();
+          print_value value2;
+          Format.print_flush ();
+          print_endline "";
         with TypeMismatch (expected, found) ->
                Printf.printf "TypeMismatch: expected: %s, found: %s.\n" expected found
            | exc ->
                print_endline ("error while running record calc: " ^ (Printexc.to_string exc)));
 
+      print_endline "";
       (* run only one expression when in repl *)
       if not repl then parse_and_eval_exprs lexbuf
     with Failure s -> print_endline ("Unexpected error occured: " ^ s)

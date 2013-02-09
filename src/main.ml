@@ -3,95 +3,62 @@ open Translate
 open Eval
 open Print
 
+let inferty_and_print exp env =
+  try
+    let ty = Types2.typ 0 env exp in
+    print_endline "inferred type:";
+    Format.print_flush ();
+    print_ty ty;
+    Format.print_flush ();
+    print_endline ""
+  with exc -> print_endline
+    ("exception in type inference: " ^ Printexc.to_string exc)
+
+let eval_and_print_w_err fn exp msg printer err_msg =
+  try
+    let v = fn exp in
+    print_endline msg;
+    Format.print_flush ();
+    printer v;
+    Format.print_flush ();
+    print_endline ""
+  with exc -> print_endline (err_msg ^ Printexc.to_string exc)
+
 let rec parse_and_eval_exprs ?(repl = false) lexbuf =
   try
     let exp = Parser.main Lexer.mytoken lexbuf in
-    (*Printf.printf "Parsed expr: %s\n" (show_exp exp);*)
+    inferty_and_print exp Types2.stdenv;
 
-    try
-      (* infer type and print *)
-      (*let exp_ty = Types.fresh_tyvar () in*)
-      (*let subs   = Types.infer Types.test_env exp exp_ty in*)
-      (*let ty     = Types.apply_sub_ty subs exp_ty in*)
-      (*Printf.printf "Type without substitution: %s\n" (Types.show_type exp_ty);*)
-      (*Printf.printf "Type: %s\n" (Types.show_type ty);*)
+    (* eval value and print *)
+    eval_and_print_w_err
+      StagedEval.run
+      exp
+      "evaluated with StagedEval:"
+      print_value
+      "error while running staged calc: ";
 
-      (try
-        let ty2 = Types2.typ 0 Types2.stdenv exp in
-        print_endline "Type2:";
-        Format.print_flush ();
-        print_ty ty2;
-        Format.print_flush ();
-        print_endline "";
-      with exc -> print_endline
-        ("exception in types2: " ^ Printexc.to_string exc));
+    eval_and_print_w_err
+      RecordEval.run
+      exp
+      "evaluated with RecordEval (without translation):"
+      print_value
+      "error while running staged calc: ";
 
-      (* translate and print *)
-      let translation =
-        try
-          let (translation, _) = translate exp in
-          Some translation
-        with exc -> print_endline (Printexc.to_string exc); None
-      in
+    (* translate and print *)
+    (try
+      let (translation, _) = translate exp in
+      inferty_and_print translation Types2.stdenv;
+      eval_and_print_w_err
+        RecordEval.run
+        translation
+        "evaluated with RecordEval:"
+        print_value
+        "error while running record calc: ";
+    with exc -> print_endline (Printexc.to_string exc));
 
-      (* print type of translation *)
-      (match translation with
-      | Some t ->
-        (try
-          let ty2 = Types2.typ 0 Types2.stdenv t in
-          print_endline "type of translation:";
-          Format.print_flush ();
-          print_ty ty2;
-          Format.print_flush ();
-          print_endline "";
-        with exc -> print_endline
-          ("exception in types2: " ^ Printexc.to_string exc))
-      | _ -> ());
-
-      (* eval value and print *)
-      (try
-        let value = StagedEval.run exp in
-        print_endline "Return value in staged calc:";
-        Format.print_flush ();
-        print_value value;
-        Format.print_flush ();
-        print_endline "";
-      with exc -> print_endline
-        ("error while running staged calc: " ^ Printexc.to_string exc));
-
-      (try
-        let value = RecordEval.run exp in
-        print_endline "Return value in record calc:";
-        Format.print_flush ();
-        print_value value;
-        Format.print_flush ();
-        print_endline "";
-      with exc -> print_endline
-        ("error while running staged calc: " ^ Printexc.to_string exc));
-
-      (match translation with
-      | None -> ()
-      | Some t ->
-        (*Printf.printf "Translation: %s\n" (show_exp t);*)
-        try
-          let value2 = RecordEval.run t in
-          print_endline "Return value of translation in record calc:";
-          Format.print_flush ();
-          print_value value2;
-          Format.print_flush ();
-          print_endline "";
-        with TypeMismatch (expected, found) ->
-               Printf.printf "TypeMismatch: expected: %s, found: %s.\n" expected found
-           | exc ->
-               print_endline ("error while running record calc: " ^ (Printexc.to_string exc)));
-
-      print_endline "";
-      (* run only one expression when in repl *)
-      if not repl then parse_and_eval_exprs lexbuf
-    with Failure s -> print_endline ("Unexpected error occured: " ^ s)
-       | TypeMismatch (expected, found) ->
-           Printf.printf "TypeMismatch: expected: %s, found: %s.\n" expected found
-       | exc -> print_endline (Printexc.to_string exc)
+    print_endline "----------------";
+    (* run only one expression when in repl *)
+    if not repl then parse_and_eval_exprs lexbuf
 
   with Parsing.Parse_error -> print_endline "Parse error."
      | Lexer.EndInput -> ()

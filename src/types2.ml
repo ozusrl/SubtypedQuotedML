@@ -93,15 +93,11 @@ let instantiate lvl (TypeScheme (tvs, t)) : ty =
     in
     subst t ss
 
-let set_tvkind tyvar newkind =
-  let (kind, lvl) = !tyvar in
-  tyvar := (newkind, lvl)
-
 let rec norm_ty = function
 | VarTy tyvar -> (match !tyvar with
   | LinkTo t1, _ ->
       let t2 = norm_ty t1 in
-      set_tvkind tyvar (LinkTo t2);
+      set_tv_kind tyvar (LinkTo t2);
       t2
   | _ -> VarTy tyvar)
 | t -> t
@@ -143,10 +139,6 @@ let rec link_to_ty (tyvar : typevar) (t : ty) =
   else
     prune level fvs;
     set_tv_kind tyvar (LinkTo t)
-
-let field_sort fields =
-  let sort_fn (id1, _) (id2, _) = compare id1 id2 in
-  List.sort sort_fn fields
 
 let rec unify_rows (lvl : int) rows1 rows2 =
   let rec row_ids = function

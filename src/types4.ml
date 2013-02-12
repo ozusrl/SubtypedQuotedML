@@ -200,7 +200,28 @@ let rec freetyvars ty =
 
 (* unification --{{{----------------------------------------------------------*)
 
-let rec link_to_ty (tyvar : typevar) (t : ty) = () (* TODO *)
+let rec link_to_ty (typevar : typevar) (ty : ty) =
+  let occur_check (ty : ty) (ids : id list) : bool =
+    let freevars = List.map fst (freetyvars ty) in
+    let bs = List.map (fun var -> List.mem var ids) freevars in
+    List.fold_right (fun a b -> a or b) bs false
+  in
+
+  let prune maxlvl tvs =
+    let reducelvl typevar = 
+      let (_, lvl) = !typevar in
+      set_link_level typevar (min lvl maxlvl)
+    in
+    List.iter reducelvl tvs
+  in
+
+  let (_, level) = !typevar in
+  let fvs = freetyvars ty in
+  if occur_check (TVar typevar) (List.map fst fvs) then
+    failwith "type error: circularity"
+  else
+    prune level fvs; (* TODO *)
+    set_link typevar (LinkTo t)
 
 let rec unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
   let t1' = norm_ty t1 in

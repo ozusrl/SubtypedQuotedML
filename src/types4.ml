@@ -1,4 +1,6 @@
 open Common
+open Sexplib.Sexp
+open Sexplib.Conv
 
 (*  misc. --{{{-------------------------------------------------------------- *)
 
@@ -53,15 +55,19 @@ and fieldvarlink = field link
 
 and recvar = (recvarlink * int * id list) ref
 and recvarlink = tyrec link
+with sexp
 
 type linkvar =
   | TV of typevar
   | FV of fieldvar
   | RV of recvar
+  with sexp
 
-type tyscm = TypeScheme of id list * ty
+type tyscm = TypeScheme of linkvar list * ty with sexp
 
-type tenv = (id * tyscm) list
+type tenv = (id * tyscm) list with sexp
+
+let show_type ty = to_string (sexp_of_ty ty)
 
 (* ---}}}---------------------------------------------------------------------*)
 
@@ -84,7 +90,7 @@ let link_id (link : linkvar) : id = match link with
     (match link with NoLink id -> id)
 
 let last_tyvar = ref 0
-let new_nolink _ =
+let new_name _ =
   let rec mkname i res =
     if i < 26 then
       Char.chr (97+i) :: res
@@ -101,7 +107,9 @@ let new_nolink _ =
     str
   in
   last_tyvar := !last_tyvar + 1;
-  NoLink (int_to_name !last_tyvar)
+  int_to_name !last_tyvar
+
+let new_nolink _ = NoLink (new_name ())
 
 let new_typevar (lvl : int) : typevar =
   ref (new_nolink (), lvl)
@@ -124,38 +132,44 @@ let set_link_level tyvar newlvl =
 
 (* type scheme instantiation ---{{{-------------------------------------------*)
 
-let instantiate lvl (TypeScheme (tvs, t)) : ty =
-  if List.length tvs = 0 then
-    t
-  else
-    let rec subst ty tvs =
-      if List.length tvs = 0 then ty
-      else
-        let rec subst_tyrec tyrec tvs =
-          if List.length tvs = 0 then tyrec
-          else
-            match tyrec with
-            | EmptyRec -> EmptyRec
-            | Rho recvar -> (match !recvar with
-              | (NoLink id, i, ids) ->
-                  if id = List.hd tvs then Rho (new_recvar i ids)
-                  else subst_tyrec tyrec (List.tl tvs)
-              | (LinkTo _, _, _) -> tyrec)
-            | Row (id, field, tyrec) -> Row (id, field, subst_tyrec tyrec tvs)
-        in
-        match ty with
-        | TInt  -> TInt
-        | TBool -> TBool
-        | TList ty -> TList (subst ty tvs)
-        | TRef  ty -> TRef (subst ty tvs)
-        | TFun (ty1, ty2) -> TFun (subst ty1 tvs, subst ty2 tvs)
-        | TRec tyrec -> TRec (subst_tyrec tyrec tvs)
-        | TVar typevar -> (match !typevar with
-          | NoLink id, i ->
-              if id = List.hd tvs then TVar (new_typevar i) else subst ty (List.tl tvs)
-          | LinkTo _, _ -> TVar typevar)
+let rec instantiate lvl ((TypeScheme (tvs, ty)) as scm) : ty =
+  let ss = List.map (fun tv -> tv, new_name ()) tvs in
+
+  let rec subst ty ss =
+
+    let rec subst_tyrec tyrec ss =
+
+      let rec subst_field field ss = field in (* TODO *)
+
+      match tyrec, ss with
+      | _, [] -> tyrec
+      | EmptyRec, _ -> EmptyRec
+      | Rho recvar, ((l, t) :: rest) ->
+            (match l with
+            | RV recvar' -> (match !recvar' with
+              | (link, level, _) -> (match !recvar with
+                | (link', level', btms) ->
+                    if link' = link && level = level' then
+                      Rho (ref (NoLink t, lvl, btms))
+                    else
+                      subst_tyrec tyrec rest))
+            |  _ -> subst_tyrec tyrec rest)
+      | Row (id, field, tyrec), ss ->
+          Row (id, subst_field field ss, subst_tyrec tyrec ss)
     in
-    subst t tvs
+
+    match ty, ss with
+  | _, [] -> ty
+  | TInt, _ -> TInt
+  | TBool, _ -> TBool
+  | TList t, ss -> TList (subst t ss)
+  | TRef t, ss -> TRef (subst t ss)
+  | TFun (t1, t2), ss -> TFun (subst t1 ss, subst t2 ss)
+  | TRec tyrec, ss -> TRec (subst_tyrec tyrec ss)
+  | TVar typevar, (l, t) :: rest ->
+      if l = TV typevar then TVar (ref (NoLink t, lvl)) else subst ty rest
+  in
+  subst ty ss
 
 (* ---}}}---------------------------------------------------------------------*)
 
@@ -194,7 +208,7 @@ let rec norm_ty =
 
 (* ---}}}---------------------------------------------------------------------*)
 
-(* norm ty ---{{{-------------------------------------------------------------*)
+(* freetyvras ---{{{----------------------------------------------------------*)
 
 let rec freetyvars (ty : ty) : linkvar list =
   let rec freetyvars_tyrec = function
@@ -221,7 +235,8 @@ let rec freetyvars (ty : ty) : linkvar list =
 
 (* unification --{{{----------------------------------------------------------*)
 
-let link_typevar_to_ty (typevar : typevar) (ty : ty) =
+let link_typevar_to_ty (typevar : typevar) (ty : ty) : unit =
+  Printf.printf "link_typevar_to_ty: %s -> %s\n" (show_type (TVar typevar)) (show_type ty);
   let occur_check (typevar : typevar) (links : linkvar list) : bool =
     let freevars = freetyvars (TVar typevar) in
     let bs = List.map (fun var -> List.mem var links) freevars in
@@ -230,7 +245,7 @@ let link_typevar_to_ty (typevar : typevar) (ty : ty) =
 
   let prune (maxlvl : int) (tvs : linkvar list) : unit =
     let reducelvl (tvar : linkvar) = match tvar with
-    | TV typevar -> 
+    | TV typevar ->
         let (_, lvl) = !typevar in
         set_link_level typevar (min lvl maxlvl)
     | _ -> ()
@@ -243,10 +258,12 @@ let link_typevar_to_ty (typevar : typevar) (ty : ty) =
   if occur_check typevar fvs then
     failwith "type error: circularity"
   else
-    prune level fvs; (* TODO *)
-    set_link typevar (LinkTo ty)
+    prune level fvs;
+    set_link typevar (LinkTo ty);
+    Printf.printf "link_typevar_to_ty (after): %s -> %s\n\n" (show_type (TVar typevar)) (show_type ty)
 
 let rec unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
+  Printf.printf "unify %s with %s.\n" (show_type t1) (show_type t2);
   let t1' = norm_ty t1 in
   let t2' = norm_ty t2 in
   match (t1', t2') with
@@ -256,11 +273,22 @@ let rec unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
         let (_, tv1level) = !typevar1 in
         let (_, tv2level) = !typevar2 in
         if tv1level < tv2level then
-          link_typevar_to_ty typevar1 t2'
+          begin
+            Printf.printf "typevar before linking: %s\n" (show_type (TVar typevar1));
+            link_typevar_to_ty typevar1 t2';
+            Printf.printf "typevar after linking: %s\n" (show_type (TVar typevar1));
+          end
         else
-          link_typevar_to_ty typevar2 t1'
+          begin
+            Printf.printf "typevar before linking: %s\n" (show_type (TVar typevar2));
+            link_typevar_to_ty typevar2 t1';
+            Printf.printf "typevar after linking: %s\n" (show_type (TVar typevar2));
+          end
   | TVar typevar, ty
-  | ty, TVar typevar -> link_typevar_to_ty typevar ty
+  | ty, TVar typevar ->
+      Printf.printf "typevar before linking: %s\n" (show_type (TVar typevar));
+      link_typevar_to_ty typevar ty;
+      Printf.printf "typevar after linking: %s\n" (show_type (TVar typevar));
 
   | TInt,  TInt
   | TBool, TBool -> ()
@@ -279,7 +307,7 @@ let rec generalize lvl (t : ty) : tyscm =
   let notfreeincontext link =
     link_lvl link > lvl
   in
-  let tvs = unique (List.map link_id (List.filter notfreeincontext (freetyvars t))) in
+  let tvs = unique (List.filter notfreeincontext (freetyvars t)) in
   TypeScheme (tvs, t)
 
 let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
@@ -365,20 +393,20 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
 let stdenv =
   let arith_op_ty = TypeScheme ([], TFun (TInt, TFun (TInt, TInt))) in
   let ref0 id = TVar (ref (NoLink id, 0)) in
+  let tv id = TV (ref (NoLink id, 0)) in
 
   List.map (fun id -> (id, arith_op_ty)) [ "+"; "-"; "*"; "/" ]
-    @ [ ("=", TypeScheme ( ["a"]
-                         , TFun (ref0 "a", TFun ( ref0 "a" , TBool))))
-      ; ("::", TypeScheme ( ["a"]
+    @ [ ("=", TypeScheme ( [tv "a"]
+                         , TFun (ref0 "a", TFun (ref0 "a" , TBool))))
+      ; ("::", TypeScheme ( [tv "a"]
                           , TFun ( ref0 "a"
                                   , TFun ( TList (ref0 "a")
-                                          , TList (ref0 "a")))))
-      ; ("head", TypeScheme ( ["a"] , TFun ( TList (ref0 "a") , ref0 "a")))
-      ; ("tail", TypeScheme ( ["a"] , TFun ( TList (ref0 "a") , TList (ref0 "a"))))
-      ; ("empty", TypeScheme ( ["a"], TFun (TList (ref0 "a"), TBool)))
-      ; ("nth", TypeScheme ( ["a"]
+                                         , TList (ref0 "a")))))
+      ; ("head", TypeScheme ([tv "a"] , TFun ( TList (ref0 "a") , ref0 "a")))
+      ; ("tail", TypeScheme ([tv "a"] , TFun ( TList (ref0 "a") , TList (ref0 "a"))))
+      ; ("empty", TypeScheme ([tv "a"], TFun (TList (ref0 "a"), TBool)))
+      ; ("nth", TypeScheme ( [tv "a"]
                            , TFun ( TInt , TFun ( TList (ref0 "a") , ref0 "a"))))
       ]
-
 
 (* ---}}}---------------------------------------------------------------------*)

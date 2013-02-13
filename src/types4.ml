@@ -192,7 +192,7 @@ let rec norm_ty =
         Rho recvar
   in
   let rec norm_typevar typevar = match !typevar with
-  | NoLink id, lvl -> TVar (ref (NoLink id, lvl))
+  | NoLink id, lvl -> TVar typevar
   | LinkTo link, lvl -> (match norm_ty link with
     | TVar typevar -> norm_typevar typevar
     | t -> t)
@@ -266,6 +266,7 @@ let rec unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
   Printf.printf "unify %s with %s.\n" (show_type t1) (show_type t2);
   let t1' = norm_ty t1 in
   let t2' = norm_ty t2 in
+  Printf.printf "types after norm_ty %s --- %s\n" (show_type t1') (show_type t2');
   match (t1', t2') with
   | TVar typevar1, TVar typevar2 ->
       if typevar1 = typevar2 then ()
@@ -297,7 +298,7 @@ let rec unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
   | TFun (a, b), TFun (c, d) -> unify lvl a c; unify lvl b d
   | TRec tyrec1, TRec tyrec2 -> () (* TODO *)
 
-  | t1, t2 -> failwith "can't unify lol"
+  | _, _ -> failwith "can't unify lol"
 
 (* ---}}}---------------------------------------------------------------------*)
 

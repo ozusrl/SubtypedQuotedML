@@ -333,12 +333,22 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
     TRec (typ_of_rows lvl env rows)
 
 | SelectE (exp, id) ->
-    let expty   = typ lvl env exp in
-    let fieldty = TVar (new_typevar lvl) in
-    unify lvl expty (TRec (Row (id, FieldType fieldty, Rho (new_recvar lvl []))));
-    fieldty
+    let rho = Rho (new_recvar lvl [id]) in
+    let retty = TVar (new_typevar lvl) in
 
-| RecUpdE (exp, id, extexp) -> TInt (* TODO *)
+    let expty = typ lvl env exp in
+    unify lvl expty (TRec (Row (id, FieldType retty, rho)));
+    retty
+
+| RecUpdE (exp, id, extexp) ->
+    let rho = Rho (new_recvar lvl [id]) in
+    let record = TRec (Row (id, FieldVar (new_fieldvar lvl), rho)) in
+
+    let expty  = typ lvl env exp in
+    unify lvl record expty;
+
+    let extty = typ lvl env extexp in
+    TRec (Row (id, FieldType extty, rho))
 
 (* staged computations *)
 | ValueE _  | BoxE _  | UnboxE _  | RunE _  | LiftE _ as e ->

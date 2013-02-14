@@ -78,17 +78,6 @@ let link_lvl (link : linkvar) : int = match link with
 | FV fieldvar -> let (_, i)    = !fieldvar in i
 | RV recvar   -> let (_, i, _) = !recvar in i
 
-let link_id (link : linkvar) : id = match link with
-| TV typevar ->
-    let (link,_) = !typevar in
-    (match link with NoLink id -> id)
-| FV fieldvar ->
-    let (link,_) = !fieldvar in
-    (match link with NoLink id -> id)
-| RV recvar ->
-    let (link,_,_) = !recvar in
-    (match link with NoLink id -> id)
-
 let last_tyvar = ref 0
 let new_name _ =
   let rec mkname i res =
@@ -132,33 +121,28 @@ let set_link_level tyvar newlvl =
 
 (* type scheme instantiation ---{{{-------------------------------------------*)
 
-let rec instantiate lvl ((TypeScheme (tvs, ty)) as scm) : ty =
+let rec instantiate lvl (TypeScheme (tvs, ty)) : ty =
   let ss = List.map (fun tv -> tv, new_name ()) tvs in
 
-  let rec subst ty ss =
+  let rec subst_field field ss = match field, ss with
+  | _, [] -> field
+  | FieldType ty, ss -> FieldType (subst ty ss)
+  | Bot, _ -> Bot
+  | FieldVar fieldvar, ((l, t) :: rest) ->
+      if FV fieldvar = l then FieldVar (ref (NoLink t, lvl))
+      else subst_field field rest
 
-    let rec subst_tyrec tyrec ss =
+  and subst_tyrec tyrec ss = match tyrec, ss with
+  | _, [] -> tyrec
+  | EmptyRec, _ -> EmptyRec
+  | Rho recvar, ((l, t) :: rest) ->
+      let (_, _, ids) = !recvar in
+      if RV recvar = l then Rho (ref (NoLink t, lvl, ids))
+      else subst_tyrec tyrec rest
+  | Row (id, field, tyrec), ss ->
+      Row (id, subst_field field ss, subst_tyrec tyrec ss)
 
-      let rec subst_field field ss = field in (* TODO *)
-
-      match tyrec, ss with
-      | _, [] -> tyrec
-      | EmptyRec, _ -> EmptyRec
-      | Rho recvar, ((l, t) :: rest) ->
-            (match l with
-            | RV recvar' -> (match !recvar' with
-              | (link, level, _) -> (match !recvar with
-                | (link', level', btms) ->
-                    if link' = link && level = level' then
-                      Rho (ref (NoLink t, lvl, btms))
-                    else
-                      subst_tyrec tyrec rest))
-            |  _ -> subst_tyrec tyrec rest)
-      | Row (id, field, tyrec), ss ->
-          Row (id, subst_field field ss, subst_tyrec tyrec ss)
-    in
-
-    match ty, ss with
+  and subst ty ss = match ty, ss with
   | _, [] -> ty
   | TInt, _ -> TInt
   | TBool, _ -> TBool
@@ -175,40 +159,18 @@ let rec instantiate lvl ((TypeScheme (tvs, ty)) as scm) : ty =
 
 (* norm ty ---{{{-------------------------------------------------------------*)
 
-let rec norm_ty =
-  let rec norm_tyrec =
-    let rec norm_recvar = function
-    | (NoLink id, lvl, ids) -> (NoLink id, lvl, ids)
-    | (LinkTo link, lvl, ids) ->
-        let link' = norm_tyrec link in
-        (LinkTo link', lvl, ids)
-    in
-    function
-    | EmptyRec -> EmptyRec
-    | Row (id, field, tyrec) -> Row (id, field, norm_tyrec tyrec)
-    | Rho recvar ->
-        let recvar' = norm_recvar !recvar in
-        recvar := recvar';
-        Rho recvar
-  in
-  let rec norm_typevar typevar = match !typevar with
-  | NoLink id, lvl -> TVar typevar
-  | LinkTo link, lvl -> (match norm_ty link with
-    | TVar typevar -> norm_typevar typevar
-    | t -> t)
-  in
-  function
-  | TInt     -> TInt
-  | TBool    -> TBool
-  | TList ty -> TList (norm_ty ty)
-  | TRef  ty -> TRef  (norm_ty ty)
-  | TFun (ty1, ty2) -> TFun (norm_ty ty1, norm_ty ty2)
-  | TRec tyrec   -> TRec (norm_tyrec tyrec)
-  | TVar typevar -> norm_typevar typevar
+let rec norm_ty = function
+| TVar typevar -> (match !typevar with
+  | LinkTo t1, _ ->
+      let t2 = norm_ty t1 in
+      set_link typevar (LinkTo t2);
+      t2
+  | _ -> TVar typevar)
+| t -> t
 
 (* ---}}}---------------------------------------------------------------------*)
 
-(* freetyvras ---{{{----------------------------------------------------------*)
+(* freetyvars ---{{{----------------------------------------------------------*)
 
 let rec freetyvars (ty : ty) : linkvar list =
   let rec freetyvars_tyrec = function
@@ -236,7 +198,7 @@ let rec freetyvars (ty : ty) : linkvar list =
 (* unification --{{{----------------------------------------------------------*)
 
 let link_typevar_to_ty (typevar : typevar) (ty : ty) : unit =
-  Printf.printf "link_typevar_to_ty: %s -> %s\n" (show_type (TVar typevar)) (show_type ty);
+  (*Printf.printf "link_typevar_to_ty: %s -> %s\n" (show_type (TVar typevar)) (show_type ty);*)
   let occur_check (typevar : typevar) (links : linkvar list) : bool =
     let freevars = freetyvars (TVar typevar) in
     let bs = List.map (fun var -> List.mem var links) freevars in
@@ -259,14 +221,14 @@ let link_typevar_to_ty (typevar : typevar) (ty : ty) : unit =
     failwith "type error: circularity"
   else
     prune level fvs;
-    set_link typevar (LinkTo ty);
-    Printf.printf "link_typevar_to_ty (after): %s -> %s\n\n" (show_type (TVar typevar)) (show_type ty)
+    set_link typevar (LinkTo ty)
+    (*;Printf.printf "link_typevar_to_ty (after): %s -> %s\n\n" (show_type (TVar typevar)) (show_type ty)*)
 
 let rec unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
-  Printf.printf "unify %s with %s.\n" (show_type t1) (show_type t2);
+  (*Printf.printf "unify %s with %s.\n" (show_type t1) (show_type t2);*)
   let t1' = norm_ty t1 in
   let t2' = norm_ty t2 in
-  Printf.printf "types after norm_ty %s --- %s\n" (show_type t1') (show_type t2');
+  (*Printf.printf "types after norm_ty %s --- %s\n" (show_type t1') (show_type t2');*)
   match (t1', t2') with
   | TVar typevar1, TVar typevar2 ->
       if typevar1 = typevar2 then ()
@@ -274,29 +236,20 @@ let rec unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
         let (_, tv1level) = !typevar1 in
         let (_, tv2level) = !typevar2 in
         if tv1level < tv2level then
-          begin
-            Printf.printf "typevar before linking: %s\n" (show_type (TVar typevar1));
-            link_typevar_to_ty typevar1 t2';
-            Printf.printf "typevar after linking: %s\n" (show_type (TVar typevar1));
-          end
+          link_typevar_to_ty typevar1 t2'
         else
-          begin
-            Printf.printf "typevar before linking: %s\n" (show_type (TVar typevar2));
-            link_typevar_to_ty typevar2 t1';
-            Printf.printf "typevar after linking: %s\n" (show_type (TVar typevar2));
-          end
+          link_typevar_to_ty typevar2 t1'
+
   | TVar typevar, ty
   | ty, TVar typevar ->
-      Printf.printf "typevar before linking: %s\n" (show_type (TVar typevar));
       link_typevar_to_ty typevar ty;
-      Printf.printf "typevar after linking: %s\n" (show_type (TVar typevar));
 
   | TInt,  TInt
   | TBool, TBool -> ()
   | TList ty1, TList ty2 -> unify lvl ty1 ty2
   | TRef ty1,  TRef ty2  -> unify lvl ty1 ty2
   | TFun (a, b), TFun (c, d) -> unify lvl a c; unify lvl b d
-  | TRec tyrec1, TRec tyrec2 -> () (* TODO *)
+  (*| TRec tyrec1, TRec tyrec2 -> () [> TODO <]*)
 
   | _, _ -> failwith "can't unify lol"
 
@@ -306,9 +259,9 @@ let rec unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
 
 let rec generalize lvl (t : ty) : tyscm =
   let notfreeincontext link =
-    link_lvl link > lvl
+    link_lvl link >= lvl
   in
-  let tvs = unique (List.filter notfreeincontext (freetyvars t)) in
+  let tvs = List.filter notfreeincontext (unique (freetyvars t)) in
   TypeScheme (tvs, t)
 
 let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function

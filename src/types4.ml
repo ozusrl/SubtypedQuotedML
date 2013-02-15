@@ -164,17 +164,31 @@ let rec norm_ty = function
   | _ -> TVar typevar)
 | t -> t
 
+let rec norm_tyrec = function
+| EmptyRec -> (EmptyRec, IdSet.empty)
+| Rho recvar -> (match !recvar with
+  | LinkTo r1, lvl, ids ->
+      let (r1', ids') = norm_tyrec r1 in
+      recvar := (LinkTo r1', lvl, IdSet.union ids ids');
+      (r1', ids')
+  | _ -> (Rho recvar, IdSet.empty))
+| t -> (t, IdSet.empty)
+
 (* ---}}}---------------------------------------------------------------------*)
 
 (* freetyvars ---{{{----------------------------------------------------------*)
 
 let rec freetyvars (ty : ty) : linkvar list =
-  let rec freetyvars_tyrec = function
-  | EmptyRec -> []
-  | Rho recvar -> (match !recvar with
+  let rec freetyvars_tyrec tyrec = match norm_tyrec tyrec with
+  | EmptyRec, _ -> []
+  | Rho recvar, _ -> (match !recvar with
     | (NoLink id, lvl, _) -> [RV recvar]
     | (LinkTo l, _, _) -> freetyvars_tyrec l)
-  | Row (_, _, tyrec) -> freetyvars_tyrec tyrec
+  | Row (_, field, tyrec), _ ->
+      (match field with
+      | FieldType _
+      | Bot -> freetyvars_tyrec tyrec
+      | FieldVar fv -> FV fv :: freetyvars_tyrec tyrec)
   in
   let rec freetyvars_typevar v = match !v with
   | (NoLink _, _) -> [TV v]
@@ -223,16 +237,6 @@ let link_typevar_to_ty (typevar : typevar) (ty : ty) : unit =
 let rec unify_recs lvl tyrec1 tyrec2 = match tyrec1, tyrec2 with
 | EmptyRec, EmptyRec -> ()
 | _, _ ->
-    let rec norm_tyrec = function
-    | EmptyRec -> (EmptyRec, IdSet.empty)
-    | Rho recvar -> (match !recvar with
-      | LinkTo r1, lvl, ids ->
-          let (r1', ids') = norm_tyrec r1 in
-          recvar := (LinkTo r1', lvl, IdSet.union ids ids');
-          (r1', ids')
-      | _ -> (Rho recvar, IdSet.empty))
-    | t -> (t, IdSet.empty)
-    in
     let rec field_set = function
     | EmptyRec
     | Rho _ -> IdSet.empty

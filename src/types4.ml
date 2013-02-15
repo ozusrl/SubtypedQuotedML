@@ -174,6 +174,16 @@ let rec norm_tyrec = function
   | _ -> (Rho recvar, IdSet.empty))
 | t -> (t, IdSet.empty)
 
+let rec norm_field = function
+| FieldType ty -> FieldType ty
+| FieldVar fieldvar -> (match !fieldvar with
+  | LinkTo fv1, lvl ->
+      let fv1' = norm_field fv1 in
+      fieldvar := (LinkTo fv1', lvl);
+      fv1'
+  | _ -> FieldVar fieldvar)
+| Bot -> Bot
+
 (* ---}}}---------------------------------------------------------------------*)
 
 (* freetyvars ---{{{----------------------------------------------------------*)
@@ -251,11 +261,15 @@ let rec get_row_var tyrec = match fst (norm_tyrec tyrec) with
 | Rho _ as r -> let (norm, _) = norm_tyrec r in Some norm
 | Row (_, _, rest) -> get_row_var rest
 
-let rec link_fieldvar_to_field (fieldvar : fieldvar) (field : field) =
+let link_fieldvar_to_field (fieldvar : fieldvar) (field : field) =
   let (link, lvl) = !fieldvar in
   fieldvar := (LinkTo field, lvl)
 
-let rec unify_fields lvl f1 f2 = match f1, f2 with
+let link_recvar_to_tyrec (recvar : recvar) (tyrec : tyrec) =
+  let (link, lvl, ids) = !recvar in
+  recvar := (LinkTo tyrec, lvl, ids)
+
+let rec unify_fields lvl f1 f2 = match norm_field f1, norm_field f2 with
 | Bot, Bot -> ()
 | FieldType t1, FieldType t2 -> unify lvl t1 t2
 | FieldVar fieldvar1, FieldVar fieldvar2 ->

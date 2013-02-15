@@ -1,6 +1,4 @@
 open Common
-open Sexplib.Sexp
-open Sexplib.Conv
 
 (*  misc. --{{{-------------------------------------------------------------- *)
 
@@ -53,21 +51,19 @@ and tyvarlink = ty link
 and fieldvar = (fieldvarlink * int) ref
 and fieldvarlink = field link
 
-and recvar = (recvarlink * int * id list) ref
+and recvar = (recvarlink * int * IdSet.t) ref
 and recvarlink = tyrec link
-with sexp
 
 type linkvar =
   | TV of typevar
   | FV of fieldvar
   | RV of recvar
-  with sexp
 
-type tyscm = TypeScheme of linkvar list * ty with sexp
+type tyscm = TypeScheme of linkvar list * ty
 
-type tenv = (id * tyscm) list with sexp
+type tenv = (id * tyscm) list
 
-let show_type ty = to_string (sexp_of_ty ty)
+let show_type ty = ""
 
 (* ---}}}---------------------------------------------------------------------*)
 
@@ -103,7 +99,7 @@ let new_nolink _ = NoLink (new_name ())
 let new_typevar (lvl : int) : typevar =
   ref (new_nolink (), lvl)
 
-let new_recvar (lvl : int) (ids : id list) : recvar =
+let new_recvar (lvl : int) (ids : IdSet.t) : recvar =
   ref (new_nolink (), lvl, ids)
 
 let new_fieldvar (lvl : int) : fieldvar =
@@ -224,7 +220,88 @@ let link_typevar_to_ty (typevar : typevar) (ty : ty) : unit =
     set_link typevar (LinkTo ty)
     (*;Printf.printf "link_typevar_to_ty (after): %s -> %s\n\n" (show_type (TVar typevar)) (show_type ty)*)
 
-let rec unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
+let rec unify_recs lvl tyrec1 tyrec2 = match tyrec1, tyrec2 with
+| EmptyRec, EmptyRec -> ()
+| _, _ ->
+    let rec norm_tyrec = function
+    | EmptyRec -> (EmptyRec, IdSet.empty)
+    | Rho recvar -> (match !recvar with
+      | LinkTo r1, lvl, ids ->
+          let (r1', ids') = norm_tyrec r1 in
+          recvar := (LinkTo r1', lvl, IdSet.union ids ids');
+          (r1', ids')
+      | _ -> (Rho recvar, IdSet.empty))
+    | t -> (t, IdSet.empty)
+    in
+    let rec field_set = function
+    | EmptyRec
+    | Rho _ -> IdSet.empty
+    | Row (id, field, rest) -> IdSet.add id (field_set rest)
+    in
+    let rec get_field_ty id = function
+    | EmptyRec
+    | Rho _ -> assert false
+    | Row (id', ty, rest) -> if id = id' then ty else get_field_ty id rest
+    in
+    let rec get_row_var = function
+    | EmptyRec -> None
+    | Rho _ as r -> let (norm, _) = norm_tyrec r in Some norm
+    | Row (_, _, rest) -> get_row_var rest
+    in
+    let rec link_fieldvar_to_field (fieldvar : fieldvar) (field : field) =
+      let (link, lvl) = !fieldvar in
+      fieldvar := (LinkTo field, lvl)
+    in
+    let rec unify_fields lvl f1 f2 = match f1, f2 with
+    | Bot, Bot -> ()
+    | FieldType t1, FieldType t2 -> unify lvl t1 t2
+    | FieldVar fieldvar1, FieldVar fieldvar2 ->
+        if fieldvar1 = fieldvar2 then ()
+        else
+          let (_, fv1level) = !fieldvar1 in
+          let (_, fv2level) = !fieldvar2 in
+          if fv1level < fv2level then
+            link_fieldvar_to_field fieldvar1 f2
+          else
+            link_fieldvar_to_field fieldvar2 f1
+    | FieldVar fieldvar, ty
+    | ty, FieldVar fieldvar -> link_fieldvar_to_field fieldvar ty
+
+    | _, _ -> failwith"can't unify recs"
+    in
+
+    let field_set_1 = field_set tyrec1 in
+    let field_set_2 = field_set tyrec2 in
+
+    let inter = IdSet.inter field_set_1 field_set_2 in
+    let diff1 = IdSet.diff field_set_1 field_set_2 in
+    let diff2 = IdSet.diff field_set_2 field_set_1 in
+
+    IdSet.iter (fun e ->
+      let f1 = get_field_ty e tyrec1 in
+      let f2 = get_field_ty e tyrec2 in
+      unify_fields lvl f1 f2) inter;
+
+    let add_fields_to_rho (ids : IdSet.t) tyrec rowvar =
+      IdSet.iter (fun e ->
+        match rowvar with
+        | None -> failwith "can't unify recs ----- 2"
+        | Some (Rho rho) ->
+            let (NoLink id, lvl, bottoms) = !rho in
+            if IdSet.mem e bottoms then
+              failwith "can't unify records -- 1"
+            else
+              let new_rho_id = new_name () in
+              let ty = get_field_ty e tyrec in
+              let new_rho = Rho (ref (NoLink new_rho_id, lvl, bottoms)) in
+              rho := (LinkTo (Row (e, ty, new_rho)), lvl, bottoms)
+        | _ -> assert false) ids
+    in
+
+    add_fields_to_rho diff1 tyrec1 (get_row_var tyrec2);
+    add_fields_to_rho diff2 tyrec2 (get_row_var tyrec1)
+
+and unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
   (*Printf.printf "unify %s with %s.\n" (show_type t1) (show_type t2);*)
   let t1' = norm_ty t1 in
   let t2' = norm_ty t2 in
@@ -242,14 +319,14 @@ let rec unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
 
   | TVar typevar, ty
   | ty, TVar typevar ->
-      link_typevar_to_ty typevar ty;
+      link_typevar_to_ty typevar ty
 
   | TInt,  TInt
   | TBool, TBool -> ()
   | TList ty1, TList ty2 -> unify lvl ty1 ty2
   | TRef ty1,  TRef ty2  -> unify lvl ty1 ty2
   | TFun (a, b), TFun (c, d) -> unify lvl a c; unify lvl b d
-  (*| TRec tyrec1, TRec tyrec2 -> () [> TODO <]*)
+  | TRec tyrec1, TRec tyrec2 -> unify_recs lvl tyrec1 tyrec2
 
   | _, _ -> failwith "can't unify lol"
 
@@ -333,7 +410,7 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
     TRec (typ_of_rows lvl env rows)
 
 | SelectE (exp, id) ->
-    let rho = Rho (new_recvar lvl [id]) in
+    let rho = Rho (new_recvar lvl (IdSet.singleton id)) in
     let retty = TVar (new_typevar lvl) in
 
     let expty = typ lvl env exp in
@@ -341,7 +418,7 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
     retty
 
 | RecUpdE (exp, id, extexp) ->
-    let rho = Rho (new_recvar lvl [id]) in
+    let rho = Rho (new_recvar lvl (IdSet.singleton id)) in
     let record = TRec (Row (id, FieldVar (new_fieldvar lvl), rho)) in
 
     let expty  = typ lvl env exp in

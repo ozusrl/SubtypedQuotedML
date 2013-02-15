@@ -234,46 +234,47 @@ let link_typevar_to_ty (typevar : typevar) (ty : ty) : unit =
     set_link typevar (LinkTo ty)
     (*;Printf.printf "link_typevar_to_ty (after): %s -> %s\n\n" (show_type (TVar typevar)) (show_type ty)*)
 
-let rec unify_recs lvl tyrec1 tyrec2 = match tyrec1, tyrec2 with
+let rec field_set tyrec = match fst (norm_tyrec tyrec) with
+| EmptyRec -> IdSet.empty
+| Rho recvar -> (match !recvar with
+  | LinkTo tyrec, _, _ -> field_set tyrec
+  | _ -> IdSet.empty)
+| Row (id, field, rest) -> IdSet.add id (field_set rest)
+
+let rec get_field_ty id tyrec = match fst (norm_tyrec tyrec) with
+| EmptyRec
+| Rho _ -> assert false
+| Row (id', ty, rest) -> if id = id' then ty else get_field_ty id rest
+
+let rec get_row_var tyrec = match fst (norm_tyrec tyrec) with
+| EmptyRec -> None
+| Rho _ as r -> let (norm, _) = norm_tyrec r in Some norm
+| Row (_, _, rest) -> get_row_var rest
+
+let rec link_fieldvar_to_field (fieldvar : fieldvar) (field : field) =
+  let (link, lvl) = !fieldvar in
+  fieldvar := (LinkTo field, lvl)
+
+let rec unify_fields lvl f1 f2 = match f1, f2 with
+| Bot, Bot -> ()
+| FieldType t1, FieldType t2 -> unify lvl t1 t2
+| FieldVar fieldvar1, FieldVar fieldvar2 ->
+    if fieldvar1 = fieldvar2 then ()
+    else
+      let (_, fv1level) = !fieldvar1 in
+      let (_, fv2level) = !fieldvar2 in
+      if fv1level < fv2level then
+        link_fieldvar_to_field fieldvar1 f2
+      else
+        link_fieldvar_to_field fieldvar2 f1
+| FieldVar fieldvar, ty
+| ty, FieldVar fieldvar -> link_fieldvar_to_field fieldvar ty
+
+| _, _ -> failwith"can't unify recs"
+
+and unify_recs lvl tyrec1 tyrec2 = match tyrec1, tyrec2 with
 | EmptyRec, EmptyRec -> ()
 | _, _ ->
-    let rec field_set = function
-    | EmptyRec
-    | Rho _ -> IdSet.empty
-    | Row (id, field, rest) -> IdSet.add id (field_set rest)
-    in
-    let rec get_field_ty id = function
-    | EmptyRec
-    | Rho _ -> assert false
-    | Row (id', ty, rest) -> if id = id' then ty else get_field_ty id rest
-    in
-    let rec get_row_var = function
-    | EmptyRec -> None
-    | Rho _ as r -> let (norm, _) = norm_tyrec r in Some norm
-    | Row (_, _, rest) -> get_row_var rest
-    in
-    let rec link_fieldvar_to_field (fieldvar : fieldvar) (field : field) =
-      let (link, lvl) = !fieldvar in
-      fieldvar := (LinkTo field, lvl)
-    in
-    let rec unify_fields lvl f1 f2 = match f1, f2 with
-    | Bot, Bot -> ()
-    | FieldType t1, FieldType t2 -> unify lvl t1 t2
-    | FieldVar fieldvar1, FieldVar fieldvar2 ->
-        if fieldvar1 = fieldvar2 then ()
-        else
-          let (_, fv1level) = !fieldvar1 in
-          let (_, fv2level) = !fieldvar2 in
-          if fv1level < fv2level then
-            link_fieldvar_to_field fieldvar1 f2
-          else
-            link_fieldvar_to_field fieldvar2 f1
-    | FieldVar fieldvar, ty
-    | ty, FieldVar fieldvar -> link_fieldvar_to_field fieldvar ty
-
-    | _, _ -> failwith"can't unify recs"
-    in
-
     let field_set_1 = field_set tyrec1 in
     let field_set_2 = field_set tyrec2 in
 

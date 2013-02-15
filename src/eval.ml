@@ -142,9 +142,7 @@ module rec RecordEval : Eval = struct
   module CoreEval = EvalBase(RecordEval)
 
   let rec eval env = function
-  | RecE fields ->
-      let field_vals = List.map (fun (id, e) -> (id, CoreEval.eval env e)) fields in
-      RecV field_vals
+  | EmptyRecE -> RecV []
   | SelectE (record, field) -> (match CoreEval.eval env record with
     | RecV fields ->
         (try

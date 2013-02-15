@@ -96,11 +96,11 @@ lst_contents:
   | exp SEMI lst_contents       { AppE (AppE (IdE "::", $1), $3) }
 
 record:
-  | LB RB                       { RecE [] }
-  | LB fields RB                { RecE $2 }
+  | LB RB                       { EmptyRecE }
+  | LB fields RB                { $2 }
 
 fields:
-  | ID EQ exp                   { [ ($1, $3) ] }
-  | ID EQ exp SEMI fields       { ($1, $3) :: $5 }
+  | ID EQ exp                   { RecUpdE (EmptyRecE, $1, $3) }
+  | ID EQ exp SEMI fields       { RecUpdE ($5, $1, $3) }
 
 %%

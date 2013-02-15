@@ -55,7 +55,7 @@ type translationEnv = Empty | Rho of string | Cons of translationEnv * string
 
 let rec recordExp_of_env env =
   match env with
-  | Empty -> RecE []
+  | Empty -> EmptyRecE
   | Rho rho -> IdE rho
   | Cons(env',x) -> RecUpdE(recordExp_of_env env', x, IdE x)
 
@@ -143,14 +143,14 @@ let rec translate exp envStack : (exp * ctxs) =
     | RunE exp ->
         let h = hole_var () in
         let exp', ctxs = translate exp envStack in
-        (LetInE (Valbind (h, exp'), AppE (IdE h, RecE [])), ctxs)
+        (LetInE (Valbind (h, exp'), AppE (IdE h, EmptyRecE)), ctxs)
 
     | LiftE exp ->
         let rho, h = env_var(), hole_var() in
         let exp', ctxs = translate exp envStack in
         (LetInE (Valbind (h, exp'), AbsE(Abs(rho, IdE h))), ctxs)
     | ValueE v -> failwith "ValueE is not expected to occur in translation."
-    | RecE _ | SelectE _ | RecUpdE _ -> failwith "record expressions in translate")
+    | EmptyRecE | SelectE _ | RecUpdE _ -> failwith "record expressions in translate")
 
 
 let translate exp = translate exp [Empty]

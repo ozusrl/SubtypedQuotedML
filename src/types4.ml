@@ -406,13 +406,7 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
     new_val_ty
 
 (* records --------------------------------------- *)
-| RecE rows ->
-    let rec typ_of_rows lvl env = function
-    | [] -> EmptyRec
-    | (id, exp) :: rest ->
-        Row (id, FieldType (typ lvl env exp), typ_of_rows lvl env rest)
-    in
-    TRec (typ_of_rows lvl env rows)
+| EmptyRecE -> TRec EmptyRec
 
 | SelectE (exp, id) ->
     let rho = Rho (new_recvar lvl (IdSet.singleton id)) in

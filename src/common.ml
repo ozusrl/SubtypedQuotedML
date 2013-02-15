@@ -37,7 +37,7 @@ and exp  =
   | RunE     of exp
   | LiftE    of exp
 
-  | RecE     of field list
+  | EmptyRecE
   | SelectE  of (exp * id)
   | RecUpdE  of (exp * id * exp)
 

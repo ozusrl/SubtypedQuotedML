@@ -258,7 +258,9 @@ let rec get_field_ty id tyrec = match fst (norm_tyrec tyrec) with
 
 let rec get_row_var tyrec = match fst (norm_tyrec tyrec) with
 | EmptyRec -> None
-| Rho _ as r -> let (norm, _) = norm_tyrec r in Some norm
+| Rho row -> (match !row with
+  | NoLink _, _, _ -> Some row
+  | LinkTo tyrec, _, _ -> get_row_var tyrec)
 | Row (_, _, rest) -> get_row_var rest
 
 let link_fieldvar_to_field (fieldvar : fieldvar) (field : field) =
@@ -306,11 +308,12 @@ and unify_recs lvl tyrec1 tyrec2 =
       let f2 = get_field_ty e tyrec2 in
       unify_fields lvl f1 f2) inter;
 
-    let add_fields_to_rho (ids : IdSet.t) tyrec rowvar =
+    let add_fields_to_rho (ids : IdSet.t) tyrec target_tyrec =
       IdSet.iter (fun e ->
-        match rowvar with
+        let option_recvar = get_row_var target_tyrec in
+        match option_recvar with
         | None -> failwith "can't unify recs ----- 2"
-        | Some (Rho rho) ->
+        | Some rho ->
             let (NoLink id, lvl, bottoms) = !rho in
             if IdSet.mem e bottoms then
               failwith "can't unify records -- 1"
@@ -318,12 +321,11 @@ and unify_recs lvl tyrec1 tyrec2 =
               let new_rho_id = new_name () in
               let ty = get_field_ty e tyrec in
               let new_rho = Rho (ref (NoLink new_rho_id, lvl, bottoms)) in
-              rho := (LinkTo (Row (e, ty, new_rho)), lvl, bottoms)
-        | _ -> assert false) ids
+              rho := (LinkTo (Row (e, ty, new_rho)), lvl, bottoms)) ids
     in
 
-    add_fields_to_rho diff1 tyrec1 (get_row_var tyrec2);
-    add_fields_to_rho diff2 tyrec2 (get_row_var tyrec1)
+    add_fields_to_rho diff1 tyrec1 tyrec2;
+    add_fields_to_rho diff2 tyrec2 tyrec1
 
 and unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
   (*Printf.printf "unify %s with %s.\n" (show_type t1) (show_type t2);*)
@@ -437,8 +439,6 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
 
 | RecUpdE (exp, id, extexp) ->
     let rho = Rho (new_recvar lvl (IdSet.singleton id)) in
-    let record = TRec (Row (id, FieldVar (new_fieldvar lvl), rho)) in
-
     let expty  = typ lvl env exp in
     unify lvl (TRec rho) expty;
 

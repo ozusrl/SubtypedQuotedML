@@ -5,10 +5,11 @@ open Print
 
 let inferty_and_print exp env =
   try
-    let ty = Types2.typ 0 env exp in
+    let ty = Types4.typ 0 env exp in
     print_endline "inferred type:";
     Format.print_flush ();
-    print_ty ty;
+    (*print_ty ty;*)
+    print_endline (Types4.show_type ty);
     Format.print_flush ();
     print_endline ""
   with exc -> print_endline
@@ -27,7 +28,7 @@ let eval_and_print_w_err fn exp msg printer err_msg =
 let rec parse_and_eval_exprs ?(repl = false) lexbuf =
   try
     let exp = Parser.main Lexer.mytoken lexbuf in
-    inferty_and_print exp Types2.stdenv;
+    inferty_and_print exp Types4.stdenv;
 
     (* eval value and print *)
     eval_and_print_w_err
@@ -47,7 +48,7 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
     (* translate and print *)
     (try
       let (translation, _) = translate exp in
-      inferty_and_print translation Types2.stdenv;
+      inferty_and_print translation Types4.stdenv;
       eval_and_print_w_err
         RecordEval.run
         translation

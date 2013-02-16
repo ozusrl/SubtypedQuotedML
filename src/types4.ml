@@ -286,8 +286,13 @@ let rec unify_fields lvl f1 f2 = match norm_field f1, norm_field f2 with
 
 | _, _ -> failwith"can't unify recs"
 
-and unify_recs lvl tyrec1 tyrec2 = match tyrec1, tyrec2 with
+and unify_recs lvl tyrec1 tyrec2 =
+  match fst (norm_tyrec tyrec1), fst (norm_tyrec tyrec2) with
 | EmptyRec, EmptyRec -> ()
+| EmptyRec, Rho link
+| Rho link, EmptyRec -> (match !link with
+  | NoLink _, _, _ -> link_recvar_to_tyrec link EmptyRec
+  | LinkTo r, _, _ -> unify_recs lvl  r EmptyRec)
 | _, _ ->
     let field_set_1 = field_set tyrec1 in
     let field_set_2 = field_set tyrec2 in
@@ -435,7 +440,7 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
     let record = TRec (Row (id, FieldVar (new_fieldvar lvl), rho)) in
 
     let expty  = typ lvl env exp in
-    unify lvl record expty;
+    unify lvl (TRec rho) expty;
 
     let extty = typ lvl env extexp in
     TRec (Row (id, FieldType extty, rho))
@@ -464,3 +469,4 @@ let stdenv =
       ]
 
 (* ---}}}---------------------------------------------------------------------*)
+

@@ -69,6 +69,13 @@ let show_type ty = ""
 
 (* link operations ---{{{-----------------------------------------------------*)
 
+let linkvar_eq lv1 lv2 = match lv1, lv2 with
+| TV tv1, TV tv2 -> tv1 = tv2
+| FV fv1, FV fv2 -> fv1 = fv2
+| RV rv1, RV rv2 -> (match !rv1, !rv2 with
+  | (link1, lvl1, _), (link2, lvl2, _) -> link1 = link2 && lvl1 = lvl2)
+| _, _ -> false
+
 let link_lvl (link : linkvar) : int = match link with
 | TV typevar  -> let (_, i)    = !typevar in i
 | FV fieldvar -> let (_, i)    = !fieldvar in i
@@ -118,22 +125,23 @@ let set_link_level tyvar newlvl =
 (* type scheme instantiation ---{{{-------------------------------------------*)
 
 let rec instantiate lvl (TypeScheme (tvs, ty)) : ty =
-  let ss = List.map (fun tv -> tv, new_name ()) tvs in
+  let ss = List.map (fun tv ->
+    let lvl = link_lvl tv in
+    (tv, new_typevar lvl, new_recvar lvl IdSet.empty, new_fieldvar lvl)) tvs in
 
   let rec subst_field field ss = match field, ss with
   | _, [] -> field
   | FieldType ty, ss -> FieldType (subst ty ss)
   | Bot, _ -> Bot
-  | FieldVar fieldvar, ((l, t) :: rest) ->
-      if FV fieldvar = l then FieldVar (ref (NoLink t, lvl))
+  | FieldVar fieldvar, ((l, _, _, t) :: rest) ->
+      if linkvar_eq (FV fieldvar) l then FieldVar t
       else subst_field field rest
 
   and subst_tyrec tyrec ss = match tyrec, ss with
   | _, [] -> tyrec
   | EmptyRec, _ -> EmptyRec
-  | Rho recvar, ((l, t) :: rest) ->
-      let (_, _, ids) = !recvar in
-      if RV recvar = l then Rho (ref (NoLink t, lvl, ids))
+  | Rho recvar, ((l, _, t, _) :: rest) ->
+      if linkvar_eq (RV recvar) l then Rho t
       else subst_tyrec tyrec rest
   | Row (id, field, tyrec), ss ->
       Row (id, subst_field field ss, subst_tyrec tyrec ss)
@@ -146,8 +154,9 @@ let rec instantiate lvl (TypeScheme (tvs, ty)) : ty =
   | TRef t, ss -> TRef (subst t ss)
   | TFun (t1, t2), ss -> TFun (subst t1 ss, subst t2 ss)
   | TRec tyrec, ss -> TRec (subst_tyrec tyrec ss)
-  | TVar typevar, (l, t) :: rest ->
-      if l = TV typevar then TVar (ref (NoLink t, lvl)) else subst ty rest
+  | TVar typevar, (l, t, _, _) :: rest -> (match !typevar with
+    | NoLink _, _ -> if linkvar_eq (TV typevar) l then TVar t else subst ty rest
+    | LinkTo ty, _ -> subst ty ss)
   in
   subst ty ss
 
@@ -419,7 +428,7 @@ let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
     let rtyp       = typ lvl f_body_env body in (* return value type *)
     TFun (ptyv, rtyp)
 | LetInE (Valbind (id, rhs), body) ->
-    let rhsty  = typ (lvl+1) env rhs in
+    let rhsty  = typ lvl env rhs in
     let letenv = (id, generalize lvl rhsty) :: env in
     typ lvl letenv body
 | FixE (fname, Abs (id, body)) ->

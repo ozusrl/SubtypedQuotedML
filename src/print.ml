@@ -1,6 +1,5 @@
 open Common
 open Format
-open Types2
 
 let infix_ops = ["+"; "-"; "*"; "/"; "="; "::"]
 
@@ -119,23 +118,7 @@ let rec print_exp = function
     print_break 0 4;
     print_string ")";
     close_box ()
-| RecE fields ->
-    let print_field (id, exp) =
-      open_hovbox 2;
-      print_string id;
-      print_space ();
-      print_string "=";
-      print_break 1 2;
-      print_exp exp;
-      close_box ()
-    in
-    open_hovbox 2;
-    print_string "{";
-    print_break 1 2;
-    List.iter (fun f -> print_field f) fields;
-    print_break 1 0;
-    print_string "}";
-    close_box ()
+| EmptyRecE -> print_string "{}"
 | SelectE (exp, field) ->
     print_exp exp;
     print_string ".";
@@ -231,7 +214,7 @@ and print_funval = function
     print_string ("<stdfun " ^ id ^ " >")
 | Closure (env, id, body) -> print_abs (Abs (id, body))
 
-let rec print_ty = function
+(*let rec print_ty = function
 | IntTy -> print_string "int"
 | BoolTy -> print_string "bool"
 | FunTy (t1, t2) ->
@@ -283,4 +266,4 @@ and print_row row =
   row_iter row;
   print_space ();
   print_string "}";
-  close_box ()
+  close_box ()*)

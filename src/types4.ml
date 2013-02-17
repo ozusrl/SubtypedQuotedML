@@ -359,17 +359,14 @@ and unify_recs lvl tyrec1 tyrec2 =
     add_fields_to_rho diff1 tyrec1 tyrec2;
     add_fields_to_rho diff2 tyrec2 tyrec1;
 
-    if get_row_var tyrec1 == None then
-      match get_row_var tyrec2 with
-      | None -> ()
-      | Some rho -> link_recvar_to_tyrec rho EmptyRec
-    else ();
+    let row1 = get_row_var tyrec1 in
+    let row2 = get_row_var tyrec2 in
 
-    if get_row_var tyrec2 == None then
-      match get_row_var tyrec1 with
-      | None -> ()
-      | Some rho -> link_recvar_to_tyrec rho EmptyRec
-    else ()
+    match row1, row2 with
+    | None, None -> ()
+    | Some rho, None
+    | None, Some rho -> link_recvar_to_tyrec rho EmptyRec
+    | Some rho1, Some rho2 -> unify_recs lvl (Rho rho1) (Rho rho2)
 
 and unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
   (*Printf.printf "unify %s with %s.\n" (show_type t1) (show_type t2);*)

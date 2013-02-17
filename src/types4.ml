@@ -2,14 +2,6 @@ open Common
 
 (*  misc. --{{{-------------------------------------------------------------- *)
 
-let rec union xs ys = match xs with
-| []      -> ys
-| x :: xr ->
-    if List.mem x ys then
-      union xr ys
-    else
-      x :: union xr ys
-
 let rec unique = function
 | [] -> []
 | x :: xr -> if List.mem x xr then unique xr else x :: unique xr

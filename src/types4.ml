@@ -193,10 +193,10 @@ let rec norm_field = function
 let rec freetyvars (ty : ty) : linkvar list =
   let rec freetyvars_tyrec tyrec = match norm_tyrec tyrec with
   | EmptyRec -> []
-  | Rho recvar -> [RV recvar] (* recvar must be a NoLink *) 
+  | Rho recvar -> [RV recvar] (* recvar must be a NoLink *)
   | Row (_, field, tyrec) ->
       (match norm_field field with
-      | FieldType t -> freetyvars ty @ freetyvars_tyrec tyrec
+      | FieldType t -> freetyvars t @ freetyvars_tyrec tyrec
       | Bot -> freetyvars_tyrec tyrec
       | FieldVar fv -> FV fv :: freetyvars_tyrec tyrec)
   in

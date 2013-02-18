@@ -4,8 +4,6 @@ open Types4
 
 let infix_ops = ["+"; "-"; "*"; "/"; "="; "::"]
 
-let between l r p = print_string l; p (); print_string r
-
 let rec print_exp = function
 | IdE id -> print_string id
 | ConstE const -> print_const const

@@ -375,7 +375,7 @@ and unify (t1 : ty) (t2 : ty) : unit =
   | TFun (a, b), TFun (c, d) -> unify a c; unify b d
   | TRec tyrec1, TRec tyrec2 -> unify_recs tyrec1 tyrec2
 
-  | _, _ -> failwith "can't unify lol"
+  | _, _ -> failwith "can't unify types"
 
 (* ---}}}---------------------------------------------------------------------*)
 

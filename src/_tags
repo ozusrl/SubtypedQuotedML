@@ -1,3 +1,0 @@
-true: syntax(camlp4o)
-true: package(sexplib.syntax)
-true: thread,debug,annot

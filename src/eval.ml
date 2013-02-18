@@ -1,4 +1,5 @@
 open Common
+open Print
 
 exception StageException
 exception Failure of string
@@ -45,18 +46,23 @@ module EvalBase (EvalExtend : Eval) : Eval = struct
   | RefE exp -> RefV (ref (eval env exp))
   | DerefE exp -> (match eval env exp with
     | RefV ref -> !ref
-    | not_ref -> failwith("dereferencing a non-ref value: " ^ show_val not_ref))
+    | not_ref ->
+        let val_str = sprint (fun _ -> print_value not_ref) in
+        failwith ("dereferencing a non-ref value: " ^ val_str))
   | AssignE (e1, e2) -> (match eval env e1 with
   | RefV ref ->
       let v = eval env e2 in
       ref := v; v
-    | not_ref -> failwith ("assigning to a non-ref value: " ^ show_val not_ref))
+    | not_ref ->
+        let val_str = sprint (fun _ -> print_value not_ref) in
+        failwith ("assigning to a non-ref value: " ^ val_str))
 
   | e -> EvalExtend.eval env e
 
   (* Eval }}} *********************************************************)
 
   (* Function application {{{ *****************************************)
+
   and apply f arg =
     let apply_stdfun stdfun arg = match stdfun with
     | StdCurry (id, fn) -> ClosV (StdFun (fn arg))
@@ -89,10 +95,12 @@ module rec StagedEval : Eval = struct
   | UnboxE _ -> failwith "can't unbox in stage 0"
   | LiftE exp -> BoxV (ValueE (CoreEval.eval env exp))
   | ValueE v -> v
-
-  | exp -> failwith ("Unrecognized expression " ^ (show_exp exp) ^ " in StagedEval.eval.")
+  | exp ->
+      let exp_str = sprint (fun _ -> print_exp exp) in
+      failwith ("Unrecognized expression " ^ exp_str ^ " in StagedEval.eval.")
 
   (* Staged computations {{{ *****************************************)
+
   and eval_staged env exp n = match exp with
   | IdE id -> IdE id
   | ConstE e -> ConstE e
@@ -128,7 +136,10 @@ module rec StagedEval : Eval = struct
   | RunE exp -> RunE (eval_staged env exp n)
   | LiftE exp -> LiftE (eval_staged env exp n)
 
-  | exp -> failwith ("Unrecognized expression " ^ (show_exp exp) ^ " in StagedEval.eval_staged.")
+  | exp ->
+      let exp_str = sprint (fun _ -> print_exp exp) in
+      failwith ("Unrecognized expression " ^ exp_str ^ " in StagedEval.eval_staged.")
+
   (* Staged computations }}} ******************************************)
 
   let run = CoreEval.run
@@ -153,7 +164,9 @@ module rec RecordEval : Eval = struct
     | RecV fields -> RecV ((id, CoreEval.eval env value) :: fields)
     | not_rec -> raise (TypeMismatch ("RecTy", val_type not_rec)))
 
-  | exp -> failwith ("Unrecognized expression " ^ (show_exp exp) ^ " in RecordEval.eval.")
+  | exp ->
+      let exp_str = sprint (fun _ -> print_exp exp) in
+      failwith ("Unrecognized expression " ^ exp_str ^ " in RecordEval.eval.")
 
   let run = CoreEval.run
 

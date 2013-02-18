@@ -1,9 +1,6 @@
-open Sexplib.Sexp
-open Sexplib.Conv
-
 type id = string
 
-type env 'a = (id * 'a ref) list
+type 'a env = (id * 'a ref) list
 
 type dec = Valbind of (id * exp)
 

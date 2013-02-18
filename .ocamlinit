@@ -4,8 +4,10 @@
 #load "types4.cmo";;
 #load "parser.cmo";;
 #load "lexer.cmo";;
+#load "print.cmo";;
 open Common;;
 open Types4;;
+open Print;;
 let var1 = new_typevar 0;;
 let var2 = new_typevar 0;;
 let var3 = new_typevar 0;;

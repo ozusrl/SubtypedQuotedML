@@ -8,8 +8,8 @@ let inferty_and_print exp env =
     let ty = Types4.typ 0 env exp in
     print_endline "inferred type:";
     Format.print_flush ();
-    (*print_ty ty;*)
-    print_endline (Types4.show_type ty);
+    print_ty ty;
+    (*print_endline (Types4.show_type ty);*)
     Format.print_flush ();
     print_endline ""
   with exc -> print_endline

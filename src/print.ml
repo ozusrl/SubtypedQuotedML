@@ -4,6 +4,27 @@ open Types4
 
 let infix_ops = ["+"; "-"; "*"; "/"; "="; "::"]
 
+let string_buffer = Buffer.create 1000
+
+let formatter_output = get_formatter_output_functions ()
+
+let print_to_string _ =
+  pp_set_formatter_output_functions
+    std_formatter
+    (Buffer.add_substring string_buffer)
+    (fun () -> ())
+
+let get_string_and_reset _ =
+  let str = Buffer.contents string_buffer in
+  Buffer.clear string_buffer;
+  set_formatter_output_functions (fst formatter_output) (snd formatter_output);
+  str
+
+let sprint f =
+  print_to_string ();
+  f ();
+  get_string_and_reset ()
+
 let rec print_exp = function
 | IdE id -> print_string id
 | ConstE const -> print_const const

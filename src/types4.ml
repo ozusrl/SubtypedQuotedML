@@ -55,8 +55,6 @@ type tyscm = TypeScheme of linkvar list * ty
 
 type tenv = (id * tyscm) list
 
-let show_type ty = ""
-
 (* ---}}}---------------------------------------------------------------------*)
 
 (* link operations ---{{{-----------------------------------------------------*)
@@ -219,7 +217,6 @@ let rec freetyvars (ty : ty) : linkvar list =
 (* unification --{{{----------------------------------------------------------*)
 
 let link_typevar_to_ty (typevar : typevar) (ty : ty) : unit =
-  (*Printf.printf "link_typevar_to_ty: %s -> %s\n" (show_type (TVar typevar)) (show_type ty);*)
   let occur_check (typevar : typevar) (links : linkvar list) : bool =
     let freevars = freetyvars (TVar typevar) in
     let bs = List.map (fun var -> List.mem var links) freevars in
@@ -243,7 +240,6 @@ let link_typevar_to_ty (typevar : typevar) (ty : ty) : unit =
   else
     prune level fvs;
     set_link typevar (LinkTo ty)
-    (*;Printf.printf "link_typevar_to_ty (after): %s -> %s\n\n" (show_type (TVar typevar)) (show_type ty)*)
 
 let rec field_set tyrec = match fst (norm_tyrec tyrec) with
 | EmptyRec -> IdSet.empty
@@ -361,10 +357,8 @@ and unify_recs lvl tyrec1 tyrec2 =
     | Some rho1, Some rho2 -> unify_recs lvl (Rho rho1) (Rho rho2)
 
 and unify (lvl : int) (t1 : ty) (t2 : ty) : unit =
-  (*Printf.printf "unify %s with %s.\n" (show_type t1) (show_type t2);*)
   let t1' = norm_ty t1 in
   let t2' = norm_ty t2 in
-  (*Printf.printf "types after norm_ty %s --- %s\n" (show_type t1') (show_type t2');*)
   match (t1', t2') with
   | TVar typevar1, TVar typevar2 ->
       if typevar1 = typevar2 then ()

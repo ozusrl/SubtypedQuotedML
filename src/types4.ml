@@ -111,6 +111,14 @@ let set_link_level tyvar newlvl =
   let (link, _) = !tyvar in
   tyvar := (link, newlvl)
 
+let bottoms (recvar : recvar) : IdSet.t =
+  let (_, _, btms) = !recvar in
+  btms
+
+let set_bottoms (recvar : recvar) (btmset : IdSet.t) : unit =
+  let (id, lvl, _) = !recvar in
+  recvar := (id, lvl, btmset)
+
 (* ---}}}---------------------------------------------------------------------*)
 
 (* type scheme instantiation ---{{{-------------------------------------------*)
@@ -132,7 +140,12 @@ let rec instantiate lvl (TypeScheme (tvs, ty)) : ty =
   | _, [] -> tyrec
   | EmptyRec, _ -> EmptyRec
   | Rho recvar, ((l, _, t, _) :: rest) ->
-      if linkvar_eq (RV recvar) l then Rho t
+      if linkvar_eq (RV recvar) l then
+        begin
+          let btmset = bottoms recvar in
+          set_bottoms t btmset;
+          Rho t
+        end
       else subst_tyrec tyrec rest
   | Row (id, field, tyrec), ss ->
       Row (id, subst_field field ss, subst_tyrec tyrec ss)

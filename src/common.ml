@@ -1,12 +1,9 @@
 open Sexplib.Sexp
 open Sexplib.Conv
 
-type id = string with sexp
+type id = string
 
 type env 'a = (id * 'a ref) list
-
-let env_of_sexp _ _ = []
-let sexp_of_env _ _ = sexp_of_string "env"
 
 type dec = Valbind of (id * exp)
 
@@ -59,12 +56,8 @@ and value =
   | RecV    of (id * value) list
   | RefV    of value ref
   | UnitV
-  with sexp
 
 exception NotImplemented of exp
-
-let show_exp exp    = to_string (sexp_of_exp exp)
-let show_val value  = to_string (sexp_of_value value)
 
 let rec val_type = function
 | ConstV (CInt _) -> "TyInt"

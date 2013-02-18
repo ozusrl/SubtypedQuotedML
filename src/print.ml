@@ -114,6 +114,7 @@ and print_funval = function
 | Closure (env, id, body)      -> print_abs (Abs (id, body))
 
 let rec print_ty = function
+| TUnit    -> print_string "()"
 | TInt     -> print_string "int"
 | TBool    -> print_string "bool"
 | TList ty -> printf "["; print_ty ty; printf "]"

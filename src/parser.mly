@@ -3,7 +3,7 @@
 %}
 
 %token EOF DOT FUN LP RP LB RB UNBOX RUN LET IN SEMI LT GT COMMA ARROW COLON
-%token EQ PLUS MINUS MULT DIV FIX IF THEN ELSE LIFT LBRACK RBRACK CONS REC
+%token EQ PLUS MINUS MULT DIV FIX IF THEN ELSE LIFT LBRACK RBRACK CONS REC ELSEIF
 %token REF BANG ASSIGN
 %token <string> ID
 %token <int>    INT
@@ -14,7 +14,7 @@
 /* Assoc and precedence definitions */
 
 %right ASSIGN
-%right THEN ELSE
+%right THEN ELSE ELSEIF
 %nonassoc IN ARROW
 %nonassoc CONS
 %right COMMA
@@ -67,7 +67,7 @@ exp:
   | LP exp RP                   { $2 }
 
   | IF exp THEN exp             { CondE ( [ ($2, $4) ] ) }
-  | IF exp THEN exp ELSE exp    { CondE ( [ ($2, $4); (ConstE (CBool true), $6) ] ) }
+  | IF exp THEN exp else_part   { CondE ( ($2, $4) :: $5 ) }
   | lst                         { $1 }
   | record                      { $1 }
   | exp DOT ID                  { SelectE ($1, $3) }
@@ -78,6 +78,11 @@ exp:
   | REF exp                     { RefE $2 }
   | BANG exp                    { DerefE $2 }
   | exp ASSIGN exp              { AssignE ($1, $3) }
+
+else_part:
+  | ELSEIF exp THEN exp else_part
+                                { ($2, $4) :: $5 }
+  | ELSE exp                    { [ConstE (CBool true), $2] }
 
 func:
   | ID func                     { Abs ($1, AbsE $2) }

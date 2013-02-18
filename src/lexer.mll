@@ -42,6 +42,7 @@ rule mytoken = parse
   | ":="       { ASSIGN }
   | "if"       { IF }
   | "else"     { ELSE }
+  | "elseif"   { ELSEIF }
   | "then"     { THEN }
   | "lift"     { LIFT }
   | "fix"      { FIX }

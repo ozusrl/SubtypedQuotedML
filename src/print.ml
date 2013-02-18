@@ -77,12 +77,11 @@ and print_const = function
 | CInt i  -> print_int i
 | CBool b -> print_bool b
 
-and print_abs = function
-| Abs (id, body) ->
-    printf "@[<hov 2>(fun@ %s@ ->@ " id; print_exp body; printf ")@]"
+and print_abs (Abs (id, body)) =
+  printf "@[<hov 2>(fun@ %s@ ->@ " id; print_exp body; printf ")@]"
 
-and print_dec = function
-| Valbind (id, exp) -> printf "@[<hov 2>%s@ =@ " id; print_exp exp; printf "@]"
+and print_dec (Valbind (id, exp)) =
+  printf "@[<hov 2>%s@ =@ " id; print_exp exp; printf "@]"
 
 and print_value = function
 | ConstV c -> print_const c

@@ -16,27 +16,33 @@ end)
 (* language of types --{{{----------------------------------------------------*)
 
 type ty =
-  | TInt
-  | TBool
-  | TUnit
+ | TInt
+ | TBool
+ | TUnit
 
-  | TList of ty
-  | TRef  of ty
+ | TList of ty
+ | TRef  of ty
 
-  | TFun of ty * ty
-  | TRec of tyrec
-  | TVar of typevar
-and tyrec =
-  | EmptyRec
-  | Rho of recvar
-  | Row of id * field * tyrec
-and field =
-  | FieldType of ty
-  | FieldVar of fieldvar
-  | Bot
+ | TFun of ty * ty
+ | TRec of tyrec
+ | TVar of typevar
 and 'a link =
-  | NoLink of id
-  | LinkTo of 'a
+ | NoLink of id
+ | LinkTo of 'a
+and field =
+ | FieldType of ty
+ | FieldVar of fieldvar
+ | Bot
+and 'a rhoMap =
+ | EmptyRec
+ | Rho of recvar
+ | Row of id * 'a * 'a rhoMap
+
+and tyrec = field rhoMap
+
+and fieldScheme = Scheme of linkvar list * field
+
+and tyenv = fieldScheme rhoMap
 
 and typevar = (tyvarlink * int) ref
 and tyvarlink = ty link
@@ -47,14 +53,10 @@ and fieldvarlink = field link
 and recvar = (recvarlink * int * IdSet.t) ref
 and recvarlink = tyrec link
 
-type linkvar =
-  | TV of typevar
-  | FV of fieldvar
-  | RV of recvar
-
-type tyscm = TypeScheme of linkvar list * ty
-
-type tenv = (id * tyscm) list
+and linkvar =
+ | TV of typevar
+ | FV of fieldvar
+ | RV of recvar
 
 (* ---}}}---------------------------------------------------------------------*)
 
@@ -123,7 +125,7 @@ let set_bottoms (recvar : recvar) (btmset : IdSet.t) : unit =
 
 (* type scheme instantiation ---{{{-------------------------------------------*)
 
-let rec instantiate lvl (TypeScheme (tvs, ty)) : ty =
+let rec instantiate lvl (Scheme (tvs, fld)) : field =
   let ss = List.map (fun tv ->
     let lvl = link_lvl tv in
     (tv, new_typevar lvl, new_recvar lvl IdSet.empty, new_fieldvar lvl)) tvs in
@@ -162,7 +164,7 @@ let rec instantiate lvl (TypeScheme (tvs, ty)) : ty =
     | NoLink _, _ -> if linkvar_eq (TV typevar) l then TVar t else subst ty rest
     | LinkTo ty, _ -> subst ty ss)
   in
-  subst ty ss
+  subst_field fld ss
 
 (* ---}}}---------------------------------------------------------------------*)
 
@@ -204,15 +206,6 @@ let rec norm_field = function
 (* freetyvars ---{{{----------------------------------------------------------*)
 
 let rec freetyvars (ty : ty) : linkvar list =
-  let rec freetyvars_tyrec tyrec = match norm_tyrec tyrec with
-  | EmptyRec -> []
-  | Rho recvar -> [RV recvar] (* recvar must be a NoLink *)
-  | Row (_, field, tyrec) ->
-      (match norm_field field with
-      | FieldType t -> freetyvars t @ freetyvars_tyrec tyrec
-      | Bot -> freetyvars_tyrec tyrec
-      | FieldVar fv -> FV fv :: freetyvars_tyrec tyrec)
-  in
   match norm_ty ty with
   | TInt  -> []
   | TBool -> []
@@ -221,6 +214,18 @@ let rec freetyvars (ty : ty) : linkvar list =
   | TFun (t1, t2) -> unique(freetyvars t1 @ freetyvars t2)
   | TRec tyrec    -> freetyvars_tyrec tyrec
   | TVar typevar  -> [TV typevar] (* typevar must be a NoLink *)
+
+and freetyvars_tyrec tyrec =
+  match norm_tyrec tyrec with
+  | EmptyRec -> []
+  | Rho recvar -> [RV recvar] (* recvar must be a NoLink *)
+  | Row (_, fld, tyrec) -> freetyvars_field fld @ freetyvars_tyrec tyrec
+
+and freetyvars_field fld =
+  match norm_field fld with
+  | FieldType t -> freetyvars t 
+  | Bot -> []
+  | FieldVar fv -> [FV fv]
 
 (* ---}}}---------------------------------------------------------------------*)
 
@@ -394,15 +399,18 @@ and unify (t1 : ty) (t2 : ty) : unit =
 
 (* type inference --{{{-------------------------------------------------------*)
 
-let rec generalize lvl (t : ty) : tyscm =
+let rec generalize lvl (fld : field) : fieldScheme =
   let notfreeincontext link =
     link_lvl link > lvl
   in
-  let tvs = List.filter notfreeincontext (unique (freetyvars t)) in
-  TypeScheme (tvs, t)
+  let tvs = List.filter notfreeincontext (unique (freetyvars_field fld)) in
+  Scheme (tvs, fld)
 
-let rec typ (lvl : int) (env : tenv) : (exp -> ty) = function
-| IdE id -> instantiate lvl (List.assoc id env)
+let rec typ (lvl : int) (env : tyenv) : (exp -> ty) = function
+| IdE id -> let gamma = instantiate_env lvl env in
+            let alpha, rho = TVar (new_typevar lvl) , Rho(new_recvar lvl (IdSet.singleton id)) in
+            unify (TRec(Row(id, FieldType(alpha), rho))) gamma;
+            alpha
 | ConstE (CInt _) -> TInt
 | ConstE (CBool _) -> TBool
 | EmpLstE -> TList (TVar (new_typevar lvl))

@@ -3,6 +3,10 @@
 run: src/main.byte src/_build/.ocamlinit
 	./src/main.byte
 
+native: src/main.native src/_build/.ocamlinit
+	rlwrap ./src/main.native
+	
+
 src/main.byte:
 	cd src && ocamlbuild -use-ocamlfind main.byte
 

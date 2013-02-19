@@ -410,9 +410,13 @@ let rec generalize lvl (fld : field) : fieldScheme =
   let tvs = List.filter notfreeincontext (unique (freetyvars_field fld)) in
   Scheme (tvs, fld)
 
-let rec typ (lvl : int) (env : tyenv) : (exp -> ty) = function
+let add_to_envlist id scm envs =
+  let hd = List.hd envs in
+  Row (id, scm, hd) :: envs
+
+let rec typ (lvl : int) (env : tyenv list) : (exp -> ty) = function
 | IdE id ->
-    let gamma = instantiate_env lvl env in
+    let gamma = instantiate_env lvl (List.hd env) in
     let alpha = TVar (new_typevar lvl) in
     let rho = Rho (new_recvar lvl (IdSet.singleton id)) in
     unify (TRec (Row (id, FieldType alpha, rho))) (TRec gamma);
@@ -428,20 +432,21 @@ let rec typ (lvl : int) (env : tyenv) : (exp -> ty) = function
     retty
 | AbsE (Abs (id, body)) ->
     let ptyv       = TVar (new_typevar lvl) in (* parameter type *)
-    let f_body_env = Row(id, Scheme([], FieldType ptyv), env)  in
+    let f_body_env = add_to_envlist id (Scheme ([], FieldType ptyv)) env in
     let rtyp       = typ lvl f_body_env body in (* return value type *)
     TFun (ptyv, rtyp)
 | LetInE (Valbind (id, rhs), body) ->
     let lvl' = lvl + 1 in
     let rhsty  = typ lvl' env rhs in
-    let letenv = Row(id, generalize lvl (FieldType rhsty), env) in
+    let letenv = add_to_envlist id (generalize lvl (FieldType rhsty)) env in
     typ lvl letenv body
 | FixE (fname, Abs (id, body)) ->
     let ptyv       = TVar (new_typevar lvl) in
     let rtyv       = TVar (new_typevar lvl) in
     let f_body_env =
-      Row(id, Scheme ([], FieldType ptyv),
-          Row(fname, Scheme ([], FieldType (TFun (ptyv, rtyv))), env)) in
+      add_to_envlist id (Scheme ([], FieldType ptyv))
+        (add_to_envlist fname (Scheme ([], FieldType (TFun (ptyv, rtyv)))) env)
+    in
     let rtyp = typ lvl f_body_env body in
     unify rtyp rtyv;
     TFun (ptyv, rtyv)
@@ -521,7 +526,7 @@ let stdenv_tyrec =
   | [] -> EmptyRec
   | (id, scm) :: rest -> Row (id, scm, iter rest)
   in
-  iter stdenv
+  [iter stdenv]
 
 (* ---}}}---------------------------------------------------------------------*)
 

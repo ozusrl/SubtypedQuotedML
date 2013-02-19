@@ -129,8 +129,9 @@ let rec instantiate lvl (Scheme (tvs, fld)) : field =
   let ss = List.map (fun tv ->
     let lvl = link_lvl tv in
     (tv, new_typevar lvl, new_recvar lvl IdSet.empty, new_fieldvar lvl)) tvs in
+  subst_field fld ss
 
-  let rec subst_field field ss = match field, ss with
+and subst_field field ss = match field, ss with
   | _, [] -> field
   | FieldType ty, ss -> FieldType (subst ty ss)
   | Bot, _ -> Bot
@@ -138,7 +139,7 @@ let rec instantiate lvl (Scheme (tvs, fld)) : field =
       if linkvar_eq (FV fieldvar) l then FieldVar t
       else subst_field field rest
 
-  and subst_tyrec tyrec ss = match tyrec, ss with
+and subst_tyrec tyrec ss = match tyrec, ss with
   | _, [] -> tyrec
   | EmptyRec, _ -> EmptyRec
   | Rho recvar, ((l, _, t, _) :: rest) ->
@@ -152,7 +153,7 @@ let rec instantiate lvl (Scheme (tvs, fld)) : field =
   | Row (id, field, tyrec), ss ->
       Row (id, subst_field field ss, subst_tyrec tyrec ss)
 
-  and subst ty ss = match ty, ss with
+and subst ty ss = match ty, ss with
   | _, [] -> ty
   | TInt, _ -> TInt
   | TBool, _ -> TBool
@@ -163,12 +164,15 @@ let rec instantiate lvl (Scheme (tvs, fld)) : field =
   | TVar typevar, (l, t, _, _) :: rest -> (match !typevar with
     | NoLink _, _ -> if linkvar_eq (TV typevar) l then TVar t else subst ty rest
     | LinkTo ty, _ -> subst ty ss)
-  in
-  subst_field fld ss
+
+let rec instantiate_env lvl env : tyrec =
+  match env with
+  | EmptyRec -> EmptyRec
+  | Rho recvar -> Rho recvar
+  | Row(id, fldscm, rest) -> Row(id, instantiate lvl fldscm, instantiate_env lvl rest)
+
 
 (* ---}}}---------------------------------------------------------------------*)
-
-(* TODO: Prune the levels on-the-fly, during linking *)
 
 (* norm ty ---{{{-------------------------------------------------------------*)
 
@@ -409,7 +413,7 @@ let rec generalize lvl (fld : field) : fieldScheme =
 let rec typ (lvl : int) (env : tyenv) : (exp -> ty) = function
 | IdE id -> let gamma = instantiate_env lvl env in
             let alpha, rho = TVar (new_typevar lvl) , Rho(new_recvar lvl (IdSet.singleton id)) in
-            unify (TRec(Row(id, FieldType(alpha), rho))) gamma;
+            unify (TRec(Row(id, FieldType(alpha), rho))) (TRec gamma);
             alpha
 | ConstE (CInt _) -> TInt
 | ConstE (CBool _) -> TBool
@@ -422,21 +426,20 @@ let rec typ (lvl : int) (env : tyenv) : (exp -> ty) = function
     retty
 | AbsE (Abs (id, body)) ->
     let ptyv       = TVar (new_typevar lvl) in (* parameter type *)
-    let f_body_env = (id, TypeScheme([], ptyv)) :: env in
+    let f_body_env = Row(id, Scheme([], FieldType ptyv), env)  in
     let rtyp       = typ lvl f_body_env body in (* return value type *)
     TFun (ptyv, rtyp)
 | LetInE (Valbind (id, rhs), body) ->
     let lvl' = lvl + 1 in
     let rhsty  = typ lvl' env rhs in
-    let letenv = (id, generalize lvl rhsty) :: env in
+    let letenv = Row(id, generalize lvl (FieldType rhsty), env) in
     typ lvl letenv body
 | FixE (fname, Abs (id, body)) ->
     let ptyv       = TVar (new_typevar lvl) in
     let rtyv       = TVar (new_typevar lvl) in
     let f_body_env =
-      (id, TypeScheme ([], ptyv))
-        :: (fname, TypeScheme ([], TFun (ptyv, rtyv)))
-        :: env in
+      Row(id, Scheme ([], FieldType ptyv),
+          Row(fname, Scheme ([], FieldType (TFun (ptyv, rtyv))), env)) in
     let rtyp = typ lvl f_body_env body in
     unify rtyp rtyv;
     TFun (ptyv, rtyv)
@@ -493,22 +496,22 @@ let rec typ (lvl : int) (env : tyenv) : (exp -> ty) = function
     raise (NotImplemented e)
 
 let stdenv =
-  let arith_op_ty = TypeScheme ([], TFun (TInt, TFun (TInt, TInt))) in
+  let arith_op_ty = Scheme ([], FieldType (TFun (TInt, TFun (TInt, TInt)))) in
   let ref0 id = TVar (ref (NoLink id, 0)) in
   let tv id = TV (ref (NoLink id, 0)) in
 
   List.map (fun id -> (id, arith_op_ty)) [ "+"; "-"; "*"; "/" ]
-    @ [ ("=", TypeScheme ( [tv "a"]
-                         , TFun (ref0 "a", TFun (ref0 "a" , TBool))))
-      ; ("::", TypeScheme ( [tv "a"]
-                          , TFun ( ref0 "a"
+    @ [ ("=", Scheme ( [tv "a"]
+                         , FieldType( TFun (ref0 "a", TFun (ref0 "a" , TBool)))))
+      ; ("::", Scheme ( [tv "a"]
+                          , FieldType( TFun ( ref0 "a"
                                   , TFun ( TList (ref0 "a")
-                                         , TList (ref0 "a")))))
-      ; ("head", TypeScheme ([tv "a"] , TFun ( TList (ref0 "a") , ref0 "a")))
-      ; ("tail", TypeScheme ([tv "a"] , TFun ( TList (ref0 "a") , TList (ref0 "a"))))
-      ; ("empty", TypeScheme ([tv "a"], TFun (TList (ref0 "a"), TBool)))
-      ; ("nth", TypeScheme ( [tv "a"]
-                           , TFun ( TInt , TFun ( TList (ref0 "a") , ref0 "a"))))
+                                         , TList (ref0 "a"))))))
+      ; ("head", Scheme ([tv "a"] , FieldType( TFun ( TList (ref0 "a") , ref0 "a"))))
+      ; ("tail", Scheme ([tv "a"] , FieldType( TFun ( TList (ref0 "a") , TList (ref0 "a")))))
+      ; ("empty", Scheme ([tv "a"], FieldType( TFun (TList (ref0 "a"), TBool))))
+      ; ("nth", Scheme ( [tv "a"]
+                           , FieldType( TFun ( TInt , TFun ( TList (ref0 "a") , ref0 "a")))))
       ]
 
 (* ---}}}---------------------------------------------------------------------*)

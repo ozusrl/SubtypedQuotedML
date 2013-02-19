@@ -26,6 +26,8 @@ type ty =
  | TFun of ty * ty
  | TRec of tyrec
  | TVar of typevar
+
+ | TBox of tyrec * ty
 and 'a link =
  | NoLink of id
  | LinkTo of 'a
@@ -500,7 +502,22 @@ let rec typ (lvl : int) (env : tyenv list) : (exp -> ty) = function
     TRec (Row (id, FieldType extty, rho))
 
 (* staged computations *)
-| ValueE _  | BoxE _  | UnboxE _  | RunE _  | LiftE _ as e ->
+| BoxE exp ->
+    let newrho = new_recvar lvl IdSet.empty in
+    let expty  = typ lvl (Rho newrho :: env) exp in
+    TBox (Rho newrho, expty)
+
+| RunE exp ->
+    let expty = typ lvl env exp in
+    let retty = TVar (new_typevar lvl) in
+    unify (TBox (EmptyRec, retty)) expty;
+    retty
+
+| LiftE exp ->
+    let expty = typ lvl env exp in
+    TBox (Rho (new_recvar lvl IdSet.empty), expty)
+
+| ValueE _  | UnboxE _ as e ->
     raise (NotImplemented e)
 
 let stdenv =
@@ -509,17 +526,17 @@ let stdenv =
   let tv id = TV (ref (NoLink id, 0)) in
 
   List.map (fun id -> (id, arith_op_ty)) [ "+"; "-"; "*"; "/" ]
-    @ [ ("=", Scheme ( [tv "a"]
-                         , FieldType( TFun (ref0 "a", TFun (ref0 "a" , TBool)))))
+    @ [ ("=",  Scheme ( [tv "a"]
+                      , FieldType (TFun (ref0 "a", TFun (ref0 "a", TBool)))))
       ; ("::", Scheme ( [tv "a"]
-                          , FieldType( TFun ( ref0 "a"
-                                  , TFun ( TList (ref0 "a")
-                                         , TList (ref0 "a"))))))
-      ; ("head", Scheme ([tv "a"] , FieldType( TFun ( TList (ref0 "a") , ref0 "a"))))
-      ; ("tail", Scheme ([tv "a"] , FieldType( TFun ( TList (ref0 "a") , TList (ref0 "a")))))
-      ; ("empty", Scheme ([tv "a"], FieldType( TFun (TList (ref0 "a"), TBool))))
-      ; ("nth", Scheme ( [tv "a"]
-                           , FieldType( TFun ( TInt , TFun ( TList (ref0 "a") , ref0 "a")))))
+                      , FieldType ( TFun ( ref0 "a"
+                                         , TFun ( TList (ref0 "a")
+                                                , TList (ref0 "a"))))))
+      ; ("head",  Scheme ([tv "a"], FieldType (TFun (TList (ref0 "a"), ref0 "a"))))
+      ; ("tail",  Scheme ([tv "a"], FieldType (TFun (TList (ref0 "a"), TList (ref0 "a")))))
+      ; ("empty", Scheme ([tv "a"], FieldType (TFun (TList (ref0 "a"), TBool))))
+      ; ("nth",   Scheme ( [tv "a"]
+                         , FieldType (TFun (TInt, TFun (TList (ref0 "a"), ref0 "a")))))
       ]
 
 let stdenv_tyrec =

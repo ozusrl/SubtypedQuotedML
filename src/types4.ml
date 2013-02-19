@@ -399,7 +399,8 @@ and unify (t1 : ty) (t2 : ty) : unit =
   | TRef ty1,  TRef ty2  -> unify ty1 ty2
   | TFun (a, b), TFun (c, d) -> unify a c; unify b d
   | TRec tyrec1, TRec tyrec2 -> unify_recs tyrec1 tyrec2
-
+  | TBox (gamma1, t1), TBox (gamma2, t2) -> unify_recs gamma1 gamma2; unify t1 t2
+  
   | _, _ -> failwith "can't unify types"
 
 (* ---}}}---------------------------------------------------------------------*)
@@ -517,7 +518,14 @@ let rec typ (lvl : int) (env : tyenv list) : (exp -> ty) = function
     let expty = typ lvl env exp in
     TBox (Rho (new_recvar lvl IdSet.empty), expty)
 
-| ValueE _  | UnboxE _ as e ->
+| UnboxE exp ->
+    let expty = typ lvl (List.tl env) exp in
+    let gamma = instantiate_env lvl (List.hd env) in
+    let alpha = TVar(new_typevar lvl) in
+    unify expty (TBox (gamma, alpha));
+    alpha
+    
+| ValueE _ as e -> 
     raise (NotImplemented e)
 
 let stdenv =

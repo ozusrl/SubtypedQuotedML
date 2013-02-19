@@ -169,7 +169,7 @@ let rec instantiate_env lvl env : tyrec =
   match env with
   | EmptyRec -> EmptyRec
   | Rho recvar -> Rho recvar
-  | Row(id, fldscm, rest) -> Row(id, instantiate lvl fldscm, instantiate_env lvl rest)
+  | Row (id, fldscm, rest) -> Row (id, instantiate lvl fldscm, instantiate_env lvl rest)
 
 
 (* ---}}}---------------------------------------------------------------------*)
@@ -227,7 +227,7 @@ and freetyvars_tyrec tyrec =
 
 and freetyvars_field fld =
   match norm_field fld with
-  | FieldType t -> freetyvars t 
+  | FieldType t -> freetyvars t
   | Bot -> []
   | FieldVar fv -> [FV fv]
 
@@ -411,10 +411,12 @@ let rec generalize lvl (fld : field) : fieldScheme =
   Scheme (tvs, fld)
 
 let rec typ (lvl : int) (env : tyenv) : (exp -> ty) = function
-| IdE id -> let gamma = instantiate_env lvl env in
-            let alpha, rho = TVar (new_typevar lvl) , Rho(new_recvar lvl (IdSet.singleton id)) in
-            unify (TRec(Row(id, FieldType(alpha), rho))) (TRec gamma);
-            alpha
+| IdE id ->
+    let gamma = instantiate_env lvl env in
+    let alpha = TVar (new_typevar lvl) in
+    let rho = Rho (new_recvar lvl (IdSet.singleton id)) in
+    unify (TRec (Row (id, FieldType alpha, rho))) (TRec gamma);
+    alpha
 | ConstE (CInt _) -> TInt
 | ConstE (CBool _) -> TBool
 | EmpLstE -> TList (TVar (new_typevar lvl))

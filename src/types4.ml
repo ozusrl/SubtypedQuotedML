@@ -514,5 +514,12 @@ let stdenv =
                            , FieldType( TFun ( TInt , TFun ( TList (ref0 "a") , ref0 "a")))))
       ]
 
+let stdenv_tyrec =
+  let rec iter = function
+  | [] -> EmptyRec
+  | (id, scm) :: rest -> Row (id, scm, iter rest)
+  in
+  iter stdenv
+
 (* ---}}}---------------------------------------------------------------------*)
 

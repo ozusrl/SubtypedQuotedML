@@ -28,7 +28,7 @@ let eval_and_print_w_err fn exp msg printer err_msg =
 let rec parse_and_eval_exprs ?(repl = false) lexbuf =
   try
     let exp = Parser.main Lexer.mytoken lexbuf in
-    inferty_and_print exp Types4.stdenv;
+    inferty_and_print exp Types4.stdenv_tyrec;
 
     (* eval value and print *)
     eval_and_print_w_err
@@ -48,7 +48,7 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
     (* translate and print *)
     (try
       let (translation, _) = translate exp in
-      inferty_and_print translation Types4.stdenv;
+      inferty_and_print translation Types4.stdenv_tyrec;
       eval_and_print_w_err
         RecordEval.run
         translation

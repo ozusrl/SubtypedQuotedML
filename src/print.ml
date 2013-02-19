@@ -146,6 +146,12 @@ let rec print_ty = function
     printf ")@]"
 | TRec tyrec   -> print_tyrec tyrec
 | TVar typevar -> print_typevar typevar
+| TBox (tyrec, ty) ->
+    printf "@[<hov 2>box(@;<0 2>";
+    print_tyrec tyrec;
+    printf ",@;<1 2>";
+    print_ty ty;
+    printf ")@]"
 
 and print_tyrec = function
 | EmptyRec   -> print_string "{}"

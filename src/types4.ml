@@ -155,6 +155,7 @@ and subst_tyrec tyrec ss = match tyrec, ss with
 
 and subst ty ss = match ty, ss with
   | _, [] -> ty
+  | TUnit, _ -> TUnit
   | TInt, _ -> TInt
   | TBool, _ -> TBool
   | TList t, ss -> TList (subst t ss)

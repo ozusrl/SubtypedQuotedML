@@ -167,6 +167,7 @@ and subst ty ss = match ty, ss with
   | TVar typevar, (l, t, _, _) :: rest -> (match !typevar with
     | NoLink _, _ -> if linkvar_eq (TV typevar) l then TVar t else subst ty rest
     | LinkTo ty, _ -> subst ty ss)
+  | TBox (tyrec, ty), ss -> TBox (subst_tyrec tyrec ss, subst ty ss)
 
 let rec instantiate_env lvl env : tyrec =
   match env with
@@ -214,13 +215,15 @@ let rec norm_field = function
 
 let rec freetyvars (ty : ty) : linkvar list =
   match norm_ty ty with
-  | TInt  -> []
+  | TUnit
+  | TInt
   | TBool -> []
   | TList t
   | TRef  t -> freetyvars t
   | TFun (t1, t2) -> unique(freetyvars t1 @ freetyvars t2)
   | TRec tyrec    -> freetyvars_tyrec tyrec
   | TVar typevar  -> [TV typevar] (* typevar must be a NoLink *)
+  | TBox (tyrec, ty) -> freetyvars_tyrec tyrec @ freetyvars ty
 
 and freetyvars_tyrec tyrec =
   match norm_tyrec tyrec with
@@ -400,7 +403,7 @@ and unify (t1 : ty) (t2 : ty) : unit =
   | TFun (a, b), TFun (c, d) -> unify a c; unify b d
   | TRec tyrec1, TRec tyrec2 -> unify_recs tyrec1 tyrec2
   | TBox (gamma1, t1), TBox (gamma2, t2) -> unify_recs gamma1 gamma2; unify t1 t2
-  
+
   | _, _ -> failwith "can't unify types"
 
 (* ---}}}---------------------------------------------------------------------*)
@@ -524,8 +527,8 @@ let rec typ (lvl : int) (env : tyenv list) : (exp -> ty) = function
     let alpha = TVar(new_typevar lvl) in
     unify expty (TBox (gamma, alpha));
     alpha
-    
-| ValueE _ as e -> 
+
+| ValueE _ as e ->
     raise (NotImplemented e)
 
 let stdenv =

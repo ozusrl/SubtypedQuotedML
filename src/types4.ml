@@ -354,7 +354,7 @@ and unify_recs tyrec1 tyrec2 =
             if IdSet.mem e bottoms then
               begin
                 match get_field_ty e tyrec with
-                | FieldType _ -> failwith "can't unify records -- 1"
+                | FieldType _ -> failwith ("can't unify field " ^ e ^ " with Bot")
                 | FieldVar fieldvar -> link_fieldvar_to_field fieldvar Bot
                 | Bot -> ()
               end
@@ -404,7 +404,7 @@ and unify (t1 : ty) (t2 : ty) : unit =
   | TRec tyrec1, TRec tyrec2 -> unify_recs tyrec1 tyrec2
   | TBox (gamma1, t1), TBox (gamma2, t2) -> unify_recs gamma1 gamma2; unify t1 t2
 
-  | _, _ -> failwith "can't unify types"
+  | t1, t2 -> failwith "can't unify types"
 
 (* ---}}}---------------------------------------------------------------------*)
 
@@ -443,7 +443,7 @@ let rec typ (lvl : int) (env : tyenv list) : (exp -> ty) = function
     let rtyp       = typ lvl f_body_env body in (* return value type *)
     TFun (ptyv, rtyp)
 | LetInE (Valbind (id, rhs), body) ->
-    let lvl' = lvl + 1 in
+    let lvl'   = lvl + 1 in
     let rhsty  = typ lvl' env rhs in
     let letenv = add_to_envlist id (generalize lvl (FieldType rhsty)) env in
     typ lvl letenv body
@@ -470,7 +470,7 @@ let rec typ (lvl : int) (env : tyenv list) : (exp -> ty) = function
     in
     let guard_ty = typ lvl env guard in
     unify guard_ty TBool;
-    let body_ty = typ lvl env body in
+    let body_ty  = typ lvl env body in
     iter body_ty rest
 
 (* refs -------------------------------------------*)
@@ -508,7 +508,7 @@ let rec typ (lvl : int) (env : tyenv list) : (exp -> ty) = function
 (* staged computations *)
 | BoxE exp ->
     let newrho = new_recvar lvl IdSet.empty in
-    let expty  = typ lvl (Rho newrho :: env) exp in
+    let expty  = typ lvl (stdenv_tyrec_w_rho (Rho newrho) :: env) exp in
     TBox (Rho newrho, expty)
 
 | RunE exp ->
@@ -524,14 +524,14 @@ let rec typ (lvl : int) (env : tyenv list) : (exp -> ty) = function
 | UnboxE exp ->
     let expty = typ lvl (List.tl env) exp in
     let gamma = instantiate_env lvl (List.hd env) in
-    let alpha = TVar(new_typevar lvl) in
+    let alpha = TVar (new_typevar lvl) in
     unify expty (TBox (gamma, alpha));
     alpha
 
 | ValueE _ as e ->
     raise (NotImplemented e)
 
-let stdenv =
+and stdenv =
   let arith_op_ty = Scheme ([], FieldType (TFun (TInt, TFun (TInt, TInt)))) in
   let ref0 id = TVar (ref (NoLink id, 0)) in
   let tv id = TV (ref (NoLink id, 0)) in
@@ -550,12 +550,14 @@ let stdenv =
                          , FieldType (TFun (TInt, TFun (TList (ref0 "a"), ref0 "a")))))
       ]
 
-let stdenv_tyrec =
+and stdenv_tyrec_w_rho rho =
   let rec iter = function
-  | [] -> EmptyRec
+  | [] -> rho
   | (id, scm) :: rest -> Row (id, scm, iter rest)
   in
-  [iter stdenv]
+  iter stdenv
+
+let stdenv_tyrec = stdenv_tyrec_w_rho EmptyRec
 
 (* ---}}}---------------------------------------------------------------------*)
 

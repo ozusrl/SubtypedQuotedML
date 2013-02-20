@@ -20,5 +20,5 @@ let var8 = new_typevar 0;;
 
 let expstr str = Parser.main Lexer.mytoken (Lexing.from_string str);; 
 let exp _ = Parser.main Lexer.mytoken (Lexing.from_channel stdin);;
-let typexp _ = typ 0 stdenv (exp ());;
-let typstr str = typ 0 stdenv (expstr str);;
+let typexp _ = typ [0] [stdenv_tyrec] (exp ());;
+let typstr str = typ [0] [stdenv_tyrec] (expstr str);;

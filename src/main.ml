@@ -5,7 +5,7 @@ open Print
 
 let inferty_and_print exp env =
   try
-    let ty = Types4.typ 0 env exp in
+    let ty = Types4.typ [0] env exp in
     print_endline "inferred type:";
     Format.print_flush ();
     print_ty ty;

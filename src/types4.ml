@@ -421,7 +421,11 @@ let add_to_envlist id scm envs =
   let hd = List.hd envs in
   Row (id, scm, hd) :: envs
 
-let rec typ (lvl : int) (envs : tyenv list) : (exp -> ty) = function
+let inc_level lvls = (List.hd lvls + 1) :: List.tl lvls
+
+let rec typ (lvls : int list) (envs : tyenv list) : (exp -> ty) =
+  let lvl = List.hd lvls in
+  function
 | IdE id ->
     (try
       let scm = List.assoc id stdenv in
@@ -437,21 +441,20 @@ let rec typ (lvl : int) (envs : tyenv list) : (exp -> ty) = function
 | ConstE (CBool _) -> TBool
 | EmpLstE -> TList (TVar (new_typevar lvl))
 | AppE (e1, e2) ->
-    let funty = typ lvl envs e1 in
-    let argty = typ lvl envs e2 in
+    let funty = typ lvls envs e1 in
+    let argty = typ lvls envs e2 in
     let retty = TVar (new_typevar lvl) in
     unify funty (TFun (argty, retty));
     retty
 | AbsE (Abs (id, body)) ->
     let ptyv       = TVar (new_typevar lvl) in (* parameter type *)
     let f_body_env = add_to_envlist id (Scheme ([], FieldType ptyv)) envs in
-    let rtyp       = typ lvl f_body_env body in (* return value type *)
+    let rtyp       = typ lvls f_body_env body in (* return value type *)
     TFun (ptyv, rtyp)
 | LetInE (Valbind (id, rhs), body) ->
-    let lvl'   = lvl + 1 in
-    let rhsty  = typ lvl' envs rhs in
+    let rhsty  = typ (inc_level lvls) envs rhs in
     let letenv = add_to_envlist id (generalize lvl (FieldType rhsty)) envs in
-    typ lvl letenv body
+    typ lvls letenv body
 | FixE (fname, Abs (id, body)) ->
     let ptyv       = TVar (new_typevar lvl) in
     let rtyv       = TVar (new_typevar lvl) in
@@ -459,7 +462,7 @@ let rec typ (lvl : int) (envs : tyenv list) : (exp -> ty) = function
       add_to_envlist id (Scheme ([], FieldType ptyv))
         (add_to_envlist fname (Scheme ([], FieldType (TFun (ptyv, rtyv)))) envs)
     in
-    let rtyp = typ lvl f_body_env body in
+    let rtyp = typ lvls f_body_env body in
     unify rtyp rtyv;
     TFun (ptyv, rtyv)
 | CondE [] -> failwith "CondE with empty cond list"
@@ -467,27 +470,27 @@ let rec typ (lvl : int) (envs : tyenv list) : (exp -> ty) = function
     let rec iter body_ty = function
     | [] -> body_ty
     | (guard, body) :: rest ->
-        let guard_ty = typ lvl envs guard in
+        let guard_ty = typ lvls envs guard in
         unify guard_ty TBool;
-        let body_ty' = typ lvl envs body in
+        let body_ty' = typ lvls envs body in
         unify body_ty body_ty';
         iter body_ty rest
     in
-    let guard_ty = typ lvl envs guard in
+    let guard_ty = typ lvls envs guard in
     unify guard_ty TBool;
-    let body_ty  = typ lvl envs body in
+    let body_ty  = typ lvls envs body in
     iter body_ty rest
 
 (* refs -------------------------------------------*)
-| RefE e -> TRef (typ lvl envs e)
+| RefE e -> TRef (typ lvls envs e)
 | DerefE e ->
-    let ref_ty = typ lvl envs e in
+    let ref_ty = typ lvls envs e in
     let ret = TVar (new_typevar lvl) in
     unify ref_ty (TRef ret);
     ret
 | AssignE (e1, e2) ->
-    let ref_ty = typ lvl envs e1 in
-    let new_val_ty = typ lvl envs e2 in
+    let ref_ty = typ lvls envs e1 in
+    let new_val_ty = typ lvls envs e2 in
     unify ref_ty (TRef new_val_ty);
     TUnit
 
@@ -498,36 +501,36 @@ let rec typ (lvl : int) (envs : tyenv list) : (exp -> ty) = function
     let rho = Rho (new_recvar lvl (IdSet.singleton id)) in
     let retty = TVar (new_typevar lvl) in
 
-    let expty = typ lvl envs exp in
+    let expty = typ lvls envs exp in
     unify expty (TRec (Row (id, FieldType retty, rho)));
     retty
 
 | RecUpdE (exp, id, extexp) ->
     let rho = Rho (new_recvar lvl (IdSet.singleton id)) in
-    let expty  = typ lvl envs exp in
+    let expty  = typ lvls envs exp in
     unify expty (TRec (Row (id, FieldVar (new_fieldvar lvl), rho)));
 
-    let extty = typ lvl envs extexp in
+    let extty = typ lvls envs extexp in
     TRec (Row (id, FieldType extty, rho))
 
 (* staged computations *)
 | BoxE exp ->
     let newrho = new_recvar lvl IdSet.empty in
-    let expty  = typ lvl (Rho newrho :: envs) exp in
+    let expty  = typ (0 :: lvls) (Rho newrho :: envs) exp in
     TBox (Rho newrho, expty)
 
 | RunE exp ->
-    let expty = typ lvl envs exp in
+    let expty = typ lvls envs exp in
     let retty = TVar (new_typevar lvl) in
     unify (TBox (EmptyRec, retty)) expty;
     retty
 
 | LiftE exp ->
-    let expty = typ lvl envs exp in
+    let expty = typ lvls envs exp in
     TBox (Rho (new_recvar lvl IdSet.empty), expty)
 
 | UnboxE exp ->
-    let expty = typ lvl (List.tl envs) exp in
+    let expty = typ (List.tl lvls) (List.tl envs) exp in
     let gamma = instantiate_env lvl (List.hd envs) in
     let alpha = TVar (new_typevar lvl) in
     unify expty (TBox (gamma, alpha));

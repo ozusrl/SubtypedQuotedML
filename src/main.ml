@@ -38,14 +38,7 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
       print_value
       "error while running staged calc: ";
 
-    (*eval_and_print_w_err
-      RecordEval.run
-      exp
-      "evaluated with RecordEval (without translation):"
-      print_value
-      "error while running staged calc: ";*)
-
-    Printf.printf "translation ----\n";
+    print_endline "translation:";
 
     (* translate and print *)
     (try

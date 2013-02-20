@@ -423,11 +423,16 @@ let add_to_envlist id scm envs =
 
 let rec typ (lvl : int) (env : tyenv list) : (exp -> ty) = function
 | IdE id ->
-    let gamma = instantiate_env lvl (List.hd env) in
-    let alpha = TVar (new_typevar lvl) in
-    let rho = Rho (new_recvar lvl (IdSet.singleton id)) in
-    unify (TRec (Row (id, FieldType alpha, rho))) (TRec gamma);
-    alpha
+    (try
+      let scm = List.assoc id stdenv in
+      let (FieldType ty) = instantiate lvl scm in
+      ty
+    with Not_found ->
+      let gamma = instantiate_env lvl (List.hd env) in
+      let alpha = TVar (new_typevar lvl) in
+      let rho = Rho (new_recvar lvl (IdSet.singleton id)) in
+      unify (TRec (Row (id, FieldType alpha, rho))) (TRec gamma);
+      alpha)
 | ConstE (CInt _) -> TInt
 | ConstE (CBool _) -> TBool
 | EmpLstE -> TList (TVar (new_typevar lvl))
@@ -508,7 +513,7 @@ let rec typ (lvl : int) (env : tyenv list) : (exp -> ty) = function
 (* staged computations *)
 | BoxE exp ->
     let newrho = new_recvar lvl IdSet.empty in
-    let expty  = typ lvl (stdenv_tyrec_w_rho (Rho newrho) :: env) exp in
+    let expty  = typ lvl (Rho newrho :: env) exp in
     TBox (Rho newrho, expty)
 
 | RunE exp ->
@@ -550,14 +555,12 @@ and stdenv =
                          , FieldType (TFun (TInt, TFun (TList (ref0 "a"), ref0 "a")))))
       ]
 
-and stdenv_tyrec_w_rho rho =
+let stdenv_tyrec =
   let rec iter = function
-  | [] -> rho
+  | [] -> EmptyRec
   | (id, scm) :: rest -> Row (id, scm, iter rest)
   in
   iter stdenv
-
-let stdenv_tyrec = stdenv_tyrec_w_rho EmptyRec
 
 (* ---}}}---------------------------------------------------------------------*)
 

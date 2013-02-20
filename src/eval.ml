@@ -50,9 +50,9 @@ module EvalBase (EvalExtend : Eval) : Eval = struct
         let val_str = sprint (fun _ -> print_value not_ref) in
         failwith ("dereferencing a non-ref value: " ^ val_str))
   | AssignE (e1, e2) -> (match eval env e1 with
-  | RefV ref ->
+    | RefV ref ->
       let v = eval env e2 in
-      ref := v; v
+      ref := v; UnitV
     | not_ref ->
         let val_str = sprint (fun _ -> print_value not_ref) in
         failwith ("assigning to a non-ref value: " ^ val_str))

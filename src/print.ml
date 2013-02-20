@@ -93,6 +93,10 @@ let rec print_exp = function
     printf ".%s@ :=@ " id;
     print_exp exp;
     printf "@ }}@]"
+| SeqE (e1, e2) ->
+    printf "@[<hv 0>";
+    print_exp e1; printf ";@ "; print_exp e2;
+    printf "@]"
 
 and print_const = function
 | CInt i  -> print_int i

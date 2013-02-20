@@ -4,7 +4,7 @@
 
 %token EOF DOT FUN LP RP LB RB UNBOX RUN LET IN SEMI LT GT COMMA ARROW COLON
 %token EQ PLUS MINUS MULT DIV FIX IF THEN ELSE LIFT LBRACK RBRACK CONS REC ELSEIF
-%token REF BANG ASSIGN
+%token REF BANG ASSIGN DSEMI
 %token <string> ID
 %token <int>    INT
 %token <bool>   BOOL
@@ -13,24 +13,25 @@
 
 /* Assoc and precedence definitions */
 
-%right ASSIGN
-%right THEN ELSE ELSEIF
 %nonassoc IN ARROW
-%nonassoc CONS
+%right SEMI
+%right THEN ELSE ELSEIF
+%right ASSIGN
+%right CONS
 %right COMMA
 %nonassoc EQ
 %left PLUS MINUS
 %left DIV MULT
 %nonassoc FUN FIX LET LP LBRACK LT LB IF ID INT BOOL
 %left APP
-%nonassoc DOT
 %nonassoc UNBOX RUN LIFT
+%nonassoc DOT
 %right REF BANG
 
 %%
 
 main:
-  | exp SEMI                    { $1 }
+  | exp DSEMI                    { $1 }
 
 dec:
   | ID EQ exp                   { Valbind ($1,$3) }
@@ -78,6 +79,8 @@ exp:
   | REF exp                     { RefE $2 }
   | BANG exp                    { DerefE $2 }
   | exp ASSIGN exp              { AssignE ($1, $3) }
+
+  | exp SEMI exp                { SeqE ($1, $3) }
 
 else_part:
   | ELSEIF exp THEN exp else_part

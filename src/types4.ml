@@ -480,6 +480,9 @@ let rec typ (lvls : int list) (envs : tyenv list) : (exp -> ty) =
     unify guard_ty TBool;
     let body_ty  = typ lvls envs body in
     iter body_ty rest
+| SeqE (e1, e2) ->
+    let _ = typ lvls envs e1 in
+    typ lvls envs e2
 
 (* refs -------------------------------------------*)
 | RefE e -> TRef (typ lvls envs e)

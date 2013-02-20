@@ -150,6 +150,12 @@ let rec translate exp envStack : (exp * ctxs) =
         let exp', ctxs = translate exp envStack in
         (LetInE (Valbind (h, exp'), AbsE(Abs(rho, IdE h))), ctxs)
     | ValueE v -> failwith "ValueE is not expected to occur in translation."
+
+    | SeqE (e1, e2) ->
+        let e1', ctxs  = translate e1 envStack in
+        let e2', ctxs' = translate e2 envStack in
+        (SeqE (e1', e2'), merge_ctxs ctxs ctxs')
+
     | EmptyRecE | SelectE _ | RecUpdE _ -> failwith "record expressions in translate")
 
 

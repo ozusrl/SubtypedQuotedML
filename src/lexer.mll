@@ -20,6 +20,7 @@ rule mytoken = parse
   | ">"        { GT }
   | "."        { DOT }
   | ";"        { SEMI }
+  | ";;"       { DSEMI }
   | ":"        { COLON }
   | "fun"      { FUN }
   | "~"        { UNBOX }

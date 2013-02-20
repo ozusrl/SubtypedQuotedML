@@ -56,6 +56,7 @@ module EvalBase (EvalExtend : Eval) : Eval = struct
     | not_ref ->
         let val_str = sprint (fun _ -> print_value not_ref) in
         failwith ("assigning to a non-ref value: " ^ val_str))
+  | SeqE (e1, e2) -> let _ = eval env e1 in eval env e2
 
   | e -> EvalExtend.eval env e
 

@@ -35,6 +35,8 @@ and exp  =
   | SelectE  of (exp * id)
   | RecUpdE  of (exp * id * exp)
 
+  | SeqE of (exp * exp)
+
 and stdfun =
   | StdCurry    of id * (value -> stdfun)
   | StdFunction of id * (value -> value)

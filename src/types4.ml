@@ -423,11 +423,16 @@ let add_to_envlist id scm envs =
 
 let rec typ (lvl : int) (env : tyenv list) : (exp -> ty) = function
 | IdE id ->
-    let gamma = instantiate_env lvl (List.hd env) in
-    let alpha = TVar (new_typevar lvl) in
-    let rho = Rho (new_recvar lvl (IdSet.singleton id)) in
-    unify (TRec (Row (id, FieldType alpha, rho))) (TRec gamma);
-    alpha
+    (try
+      let scm = List.assoc id stdenv in
+      let (FieldType ty) = instantiate lvl scm in
+      ty
+    with Not_found ->
+      let gamma = instantiate_env lvl (List.hd env) in
+      let alpha = TVar (new_typevar lvl) in
+      let rho = Rho (new_recvar lvl (IdSet.singleton id)) in
+      unify (TRec (Row (id, FieldType alpha, rho))) (TRec gamma);
+      alpha)
 | ConstE (CInt _) -> TInt
 | ConstE (CBool _) -> TBool
 | EmpLstE -> TList (TVar (new_typevar lvl))
@@ -531,7 +536,7 @@ let rec typ (lvl : int) (env : tyenv list) : (exp -> ty) = function
 | ValueE _ as e ->
     raise (NotImplemented e)
 
-let stdenv =
+and stdenv =
   let arith_op_ty = Scheme ([], FieldType (TFun (TInt, TFun (TInt, TInt)))) in
   let ref0 id = TVar (ref (NoLink id, 0)) in
   let tv id = TV (ref (NoLink id, 0)) in

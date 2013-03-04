@@ -93,7 +93,7 @@ let handle_channel channel =
 
   done
 
-let () = handle_channel stdin
+(*let () = handle_channel stdin*)
 
 (*i(* Here is some test code. *)
 

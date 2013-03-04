@@ -10,6 +10,8 @@
 # This pseudo-makefile builds Gromit and Wallace before transferring
 # control to the actual makefile.
 
+.PHONY: staged
+
 all:
 	@(cd ../gromit; make)
 	@(cd ../wallace; make)

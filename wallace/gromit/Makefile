@@ -34,12 +34,10 @@ gromit: syntax.cmo parser.cmo lexer.cmo ordering.cmo signature.cmo generator.cmo
 parser.ml parser.mli: parser.mly
 	@rm -f parser.ml parser.mli
 	$(CAMLYACC) $^
-	@chmod a-w parser.ml parser.mli
 
 lexer.ml: lexer.mll
 	@rm -f $@
 	$(CAMLLEX) $^
-	@chmod a-w $@
 
 clean::
 	rm -f gromit .generated-dependencies

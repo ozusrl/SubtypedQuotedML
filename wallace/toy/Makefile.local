@@ -58,7 +58,6 @@ ALGEBRA_SOURCE=mlAlgebra.grm
 $(ALGEBRA_TARGET): $(GROMIT) $(ALGEBRA_SOURCE)
 	@rm -f $(ALGEBRA_TARGET)
 	$(GROMIT) $(ALGEBRA_SOURCE)
-	@chmod a-w $(ALGEBRA_TARGET)
 
 clean::
 	rm -f $(ALGEBRA_TARGET)
@@ -74,7 +73,6 @@ TYPE_LEXER_SOURCE=mlAlgebra_lexer.mll
 $(TYPE_LEXER_TARGET): $(TYPE_LEXER_SOURCE)
 	@rm -f $@
 	$(CAMLLEX) $^
-	@chmod a-w $@
 
 clean::
 	rm -f $(TYPE_LEXER_TARGET)
@@ -87,7 +85,6 @@ TYPE_PARSER_SOURCE=mlAlgebra_parser.mly
 $(TYPE_PARSER_TARGET): $(TYPE_PARSER_SOURCE)
 	@rm -f $(TYPE_PARSER_TARGET)
 	$(CAMLYACC) $^
-	@chmod a-w $(TYPE_PARSER_TARGET)
 
 clean::
 	rm -f $(TYPE_PARSER_TARGET)
@@ -103,7 +100,6 @@ TOY_LEXER_SOURCE=toyLexer.mll
 $(TOY_LEXER_TARGET): $(TOY_LEXER_SOURCE)
 	@rm -f $@
 	$(CAMLLEX) $^
-	@chmod a-w $@
 
 clean::
 	rm -f $(TOY_LEXER_TARGET)
@@ -116,7 +112,6 @@ TOY_PARSER_SOURCE=toyParser.mly
 $(TOY_PARSER_TARGET): $(TOY_PARSER_SOURCE)
 	@rm -f $(TOY_PARSER_TARGET)
 	$(CAMLYACC) $^
-	@chmod a-w $(TOY_PARSER_TARGET)
 
 clean::
 	rm -f $(TOY_PARSER_TARGET)

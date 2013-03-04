@@ -53,6 +53,10 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
         "error while running record calc: ";
     with exc -> print_endline (Printexc.to_string exc));
 
+
+    Printf.printf "in toy:\n";
+    Toy.handle_phrase (ToySyntax.PhraseExpr (stagedToToy exp));
+
     print_endline "----------------";
     (* run only one expression when in repl *)
     if not repl then parse_and_eval_exprs lexbuf

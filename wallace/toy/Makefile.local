@@ -32,7 +32,7 @@ WALLACE=$(WALLACEDIR)/wallace.cma
 # Compile options.
 
 INCLUDE=-I $(WALLACEDIR)
-COMPFLAGS=-g -unsafe $(INCLUDE)
+COMPFLAGS=-g $(INCLUDE)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Building.

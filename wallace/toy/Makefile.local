@@ -70,6 +70,9 @@ beforedepend:: $(ALGEBRA_TARGET)
 TYPE_LEXER_TARGET=mlAlgebra_lexer.ml
 TYPE_LEXER_SOURCE=mlAlgebra_lexer.mll
 
+DUMMY_TYPE=my_dummy_type
+PROBLEMATIC_TYVAR=a
+
 $(TYPE_LEXER_TARGET): $(TYPE_LEXER_SOURCE)
 	@rm -f $@
 	$(CAMLLEX) $^
@@ -84,7 +87,9 @@ TYPE_PARSER_SOURCE=mlAlgebra_parser.mly
 
 $(TYPE_PARSER_TARGET): $(TYPE_PARSER_SOURCE)
 	@rm -f $(TYPE_PARSER_TARGET)
+	sed -i "s/'$(PROBLEMATIC_TYVAR)/$(DUMMY_TYPE)/" $^
 	$(CAMLYACC) $^
+	sed -i "s/$(DUMMY_TYPE)/'$(PROBLEMATIC_TYVAR)/" $(TYPE_PARSER_TARGET)
 
 clean::
 	rm -f $(TYPE_PARSER_TARGET)

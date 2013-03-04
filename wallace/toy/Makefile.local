@@ -59,7 +59,7 @@ STAGED_LEXER_TARGET=stagedLexer.ml
 STAGED_PARSER_SOURCE=stagedParser.mly
 STAGED_PARSER_TARGET=stagedParser.ml stagedParser.mli
 
-staged: $(STAGED_OBJS)
+staged: $(WALLACE) $(OBJS) $(STAGED_OBJS)
 	$(CAMLC) $(COMPFLAGS) $^ -o $@
 
 $(STAGED_PARSER_TARGET): $(STAGED_PARSER_SOURCE)

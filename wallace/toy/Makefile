@@ -23,6 +23,8 @@ depend:
 	@make -f Makefile.local depend
 
 staged:
+	@(cd ../gromit; make)
+	@(cd ../wallace; make)
 	@(make -f Makefile.local staged)
 
 clean:

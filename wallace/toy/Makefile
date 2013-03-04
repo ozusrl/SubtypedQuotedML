@@ -20,6 +20,9 @@ depend:
 	@(cd ../wallace; make depend)
 	@make -f Makefile.local depend
 
+staged:
+	@(make -f Makefile.local staged)
+
 clean:
 	@make -f Makefile.local clean
 

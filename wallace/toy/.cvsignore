@@ -1,0 +1,4 @@
+mlAlgebra.ml mlAlgebra_parser.* mlAlgebra_lexer.ml toy
+toyLexer.ml toyParser.ml toyParser.mli
+toy-auto-generated.tex auto toy.dvi
+map.ps

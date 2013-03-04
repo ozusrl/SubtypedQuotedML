@@ -1,0 +1,2 @@
+gromit gromit-auto-generated.tex gromit.dvi auto
+parser.ml parser.mli lexer.ml

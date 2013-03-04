@@ -1,0 +1,120 @@
+(*********************************************************************************************************************)
+(*                                                                                                                   *)
+(*                                                   Wallace                                                         *)
+(*                                                                                                                   *)
+(*                              François Pottier, projet Cristal, INRIA Rocquencourt                                 *)
+(*                                                                                                                   *)
+(*   Copyright 2000 Institut National de Recherche en Informatique et Automatique. Distributed only by permission.   *)
+(*                                                                                                                   *)
+(*********************************************************************************************************************)
+(* $Header: /home/pauillac/formel1/fpottier/cvs/toy/mlAlgebra.grm,v 1.11 2000/02/11 16:16:33 fpottier Exp $ *)
+
+(* This is a Gromit definition file.
+
+   Some reminders about my custom syntax:
+   * The ``Spaced'' prefix in a token name is ignored during parsing; it is used during pretty-printing.
+   * Constructors are ordered according to the ``priority'' directive given at the end of the file. The later
+     a constructor appears in this directive, the less tightly it binds.
+   * The ``printed'' directive defines how terms are printed, but also how they are parsed.
+     If a label appears between two tokens, then it is assumed to be unambiguously delimited, so any term is
+     accepted at this position. Otherwise, if it is parenthesized, then only terms of a strictly lower level
+     than the current one are accepted; otherwise, only terms of a lower, or equal, level are accepted.
+
+   * A label declaration begins with its variance. Then comes the label's argument kind, possibly surroundered
+     with angle brackets if the argument is to be a row. Last comes the label's name.
+
+ *)
+
+signature begin
+
+  lattice Regular begin
+
+    contravariant Regular domain
+    covariant Regular range
+    covariant Regular left
+    covariant Regular right
+    covariant <Record> field
+    covariant <Variant> summand
+    contravariant Regular write
+    covariant Regular read
+
+    constructor Bottom printed 'Bottom ['Bottom]
+    constructor Top printed 'Top ['Top]
+
+    constructor Arrow { domain, range } printed (domain) 'SpacedArrow range ['Arrow]
+    constructor Pair { left, right } printed (left) 'SpacedStar right ['Star]
+    constructor Ref { write, read } printed 'LParen write 'Comma read 'RParen 'SpacedRef ['Ref]
+    constructor Vect { write, read } printed 'LParen write 'Comma read 'RParen 'SpacedVect ['Vect]
+    constructor Record { field } printed 'LBrace field 'RBrace ['Record]
+    constructor Variant { summand } printed 'LBracket summand 'RBracket ['Variant]
+
+    constructor Int printed 'Int ['Int]
+    constructor Unit printed 'Unit ['Unit]
+    constructor Bool printed 'Bool ['Bool]
+    constructor Float printed 'Float ['Float]
+    constructor Char printed 'Char ['Char]
+    constructor String printed 'String ['String]
+
+    let Bottom < Arrow
+    let Arrow < Top
+    let Bottom < Pair
+    let Pair < Top
+    let Bottom < Ref
+    let Ref < Top
+    let Bottom < Vect
+    let Vect < Top
+    let Bottom < Record
+    let Record < Top
+    let Bottom < Variant
+    let Variant < Top
+
+    let Bottom < Int
+    let Int < Top
+    let Bottom < Unit
+    let Unit < Top
+    let Bottom < Bool
+    let Bool < Top
+    let Bottom < Float
+    let Float < Top
+    let Bottom < Char
+    let Char < Top
+    let Bottom < String
+    let String < Top
+
+  end
+
+  lattice Record begin
+
+    covariant Regular contents
+
+    constructor RBottom printed 'RBottom ['RBottom]
+    constructor RAbsent printed 'RAbsent ['RAbsent]
+    constructor RPresent { contents } printed 'SpacedRPresent contents ['RPresent]
+    constructor REither { contents } printed 'SpacedREither contents ['REither]
+    constructor RTop printed 'RTop ['RTop]
+
+    let RBottom < RAbsent
+    let RBottom < RPresent
+    let RAbsent < REither
+    let RPresent < REither
+    let REither < RTop
+
+  end
+
+  lattice Variant begin
+
+    covariant Regular argument
+
+    constructor VAbsent printed 'VAbsent ['VAbsent]
+    constructor VPresent { argument } printed 'SpacedVPresent argument ['VPresent]
+    constructor VTop printed 'VTop ['VTop]
+
+    let VAbsent < VPresent
+    let VPresent < VTop
+
+  end
+
+end
+
+priority Bottom Top Int Unit Bool Float Char String Record Variant Vect Ref Pair Arrow RBottom RAbsent RTop RPresent REither VAbsent VPresent VTop
+

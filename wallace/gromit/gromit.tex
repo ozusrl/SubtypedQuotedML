@@ -1,0 +1,87 @@
+%*********************************************************************************************************************%
+%                                                                                                                     %
+%                                                    Wallace                                                          %
+%                                                                                                                     %
+%                               François Pottier, projet Cristal, INRIA Rocquencourt                                  %
+%                                                                                                                     %
+%    Copyright 2000 Institut National de Recherche en Informatique et Automatique. Distributed only by permission.    %
+%                                                                                                                     %
+%*********************************************************************************************************************%
+% $Header: /home/pauillac/formel1/fpottier/cvs/gromit/gromit.tex,v 1.5 2000/02/11 16:15:36 fpottier Exp $
+
+\documentclass[a4paper]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amstext}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage[latin1]{inputenc}
+\usepackage{latexsym}
+\usepackage[bypages,novisiblespaces]{ocamlweb}
+
+\special{papersize=210mm,297mm}
+\geometry{a4paper,body={5.5in,9in}}
+
+\title{Gromit}
+\author{François Pottier}
+
+% ---------------------------------------------------------------------------------------------------------------------
+% Redefine ocamlweb's sectioning commands.
+%
+% This is a little tricky. Nothing is done at the beginning of a .ml file, except storing its name. This allows us
+% to later put its interface part and its code part at the same level, using a section for each.
+
+\renewcommand{\ocwmodule}[1]{\section{Module #1: implementation}}
+\renewcommand{\ocwinterface}[1]{\section{Module #1: interface}}
+
+\newcommand{\mysection}[1]{\subsection{#1}}
+\newcommand{\mysubsection}[1]{\subsubsection{#1}}
+
+% ---------------------------------------------------------------------------------------------------------------------
+
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+\section{Overview}
+
+Gromit is a tool which should help you customize Wallace, the constraint-handling library, for your own needs.
+Wallace is implemented as one big functor (see Wallace's \verb+Core+ module), whose most important parameter is a
+``ground signature'' \verb+G+. To satisfy this signature (described in Wallace's \verb+Ground+ module), you must
+provide a structure which completely specifies the set of types you intend to work with. This involves defining the
+type of terms, and writing functions which iterate over terms, perform constraint propagation between terms, compute
+greatest lower bounds and least upper bounds of terms, etc.
+
+Implementing such a structure from scratch may represent quite a lot of work, and may be very error-prone, if you are
+using a rich set of types. Thus, it seems better to only write a high-level description of your type algebra,
+something like
+%
+\begin{quote}
+There is a binary type constructor $\rightarrow$.\\
+$\rightarrow$ is contravariant in its first argument.\\
+$\rightarrow$ is covariant in its second argument.
+\end{quote}
+%
+and to leave the work of compiling, or interpreting, this description to an automated tool. Gromit is such a tool; it
+accepts a high level definition file, and compiles it. It creates an O'Caml file which implements Wallace's
+\verb+Ground.Signature+. As a bonus, it also produces an \verb+ocamlyacc+ grammar which parses types.
+
+\section{Limitations}
+
+The syntax of Gromit's input description files is currently undocumented. Have a look at Gromit's parser in
+\verb+parser.mly+. You should also have a look at the sample file included in my sample implementation, \verb+toy+;
+the file is \verb+toy/mlAlgebra.grm+.
+
+Gromit and Wallace's support for parsing and pretty-printing may be too limited for your needs. It is mainly intended
+to help with prototype implementations; you may want to remove it in a production implementation.
+
+Gromit currently requires the set of types to be fixed. This disallows user-defined types. It is possible to add a
+mechanism for defining new types at runtime. You may prefer to avoid Gromit altogether and write your own code to
+compile/interpret your own type definition format.
+
+\input{gromit-auto-generated}
+
+\end{document}
+

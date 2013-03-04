@@ -1,0 +1,514 @@
+%!PS-Adobe-2.0
+%%Creator: dot version gviz1.5.1 (09-29-99)
+%%For: (fpottier) Francois Pottier
+%%Title: G
+%%Pages: (atend)
+%%BoundingBox: 36 36 577 393
+%%EndComments
+%%BeginProlog
+save
+/DotDict 200 dict def
+DotDict begin
+
+%%BeginResource: procset
+/coord-font-family /Times-Roman def
+/default-font-family /Times-Roman def
+/coordfont coord-font-family findfont 8 scalefont def
+
+/InvScaleFactor 1.0 def
+/set_scale {
+	dup 1 exch div /InvScaleFactor exch def
+	dup scale
+} bind def
+
+% styles
+/solid { } bind def
+/dashed { [9 InvScaleFactor mul dup ] 0 setdash } bind def
+/dotted { [1 InvScaleFactor mul 6 InvScaleFactor mul] 0 setdash } bind def
+/invis {/fill {newpath} def /stroke {newpath} def /show {pop newpath} def} bind def
+/bold { 2 setlinewidth } bind def
+/filled { } bind def
+/unfilled { } bind def
+/rounded { } bind def
+/diagonals { } bind def
+
+% hooks for setting color 
+/nodecolor { sethsbcolor } bind def
+/edgecolor { sethsbcolor } bind def
+/graphcolor { sethsbcolor } bind def
+/nopcolor {pop pop pop} bind def
+
+/beginpage {	% i j npages
+	/npages exch def
+	/j exch def
+	/i exch def
+	/str 10 string def
+	npages 1 gt {
+		gsave
+			coordfont setfont
+			0 0 moveto
+			(\() show i str cvs show (,) show j str cvs show (\)) show
+		grestore
+	} if
+} bind def
+
+/set_font {
+	findfont exch
+	scalefont setfont
+} def
+
+% draw aligned label in bounding box aligned to current point
+% alignfactor tells what fraction to place on the left.
+% -.5 is centered.
+/alignedtext {			% text labelwidth fontsz alignfactor
+	/alignfactor exch def
+	/fontsz exch def
+	/width exch def
+	/text exch def
+	gsave
+		% even if node or edge is dashed, don't paint text with dashes
+		[] 0 setdash
+		currentpoint newpath moveto
+		text stringwidth pop
+		alignfactor mul fontsz -.3 mul rmoveto
+		text show
+	grestore
+} def
+
+/boxprim {				% xcorner ycorner xsize ysize
+		4 2 roll
+		moveto
+		2 copy
+		exch 0 rlineto
+		0 exch rlineto
+		pop neg 0 rlineto
+		closepath
+} bind def
+
+/ellipse_path {
+	/ry exch def
+	/rx exch def
+	/y exch def
+	/x exch def
+	matrix currentmatrix
+	newpath
+	x y translate
+	rx ry scale
+	0 0 1 0 360 arc
+	setmatrix
+} bind def
+
+/endpage { showpage } bind def
+
+/layercolorseq
+	[	% layer color sequence - darkest to lightest
+		[0 0 0]
+		[.2 .8 .8]
+		[.4 .8 .8]
+		[.6 .8 .8]
+		[.8 .8 .8]
+	]
+def
+
+/setlayer {/maxlayer exch def /curlayer exch def
+	layercolorseq curlayer get
+	aload pop sethsbcolor
+	/nodecolor {nopcolor} def
+	/edgecolor {nopcolor} def
+	/graphcolor {nopcolor} def
+} bind def
+
+/onlayer { curlayer ne {invis} if } def
+
+/onlayers {
+	/myupper exch def
+	/mylower exch def
+	curlayer mylower lt
+	curlayer myupper gt
+	or
+	{invis} if
+} def
+
+/curlayer 0 def
+
+%%EndResource
+14 default-font-family set_font
+1 setmiterlimit
+% /arrowlength 10 def
+% /arrowwidth 5 def
+%%EndProlog
+%%Page: 1 1
+%%PageBoundingBox: 36 36 577 393
+%%PageOrientation: Portrait
+gsave
+35 35 542 358 boxprim clip newpath
+36 36 translate
+0 0 1 beginpage
+0.9000 set_scale
+0 0 translate 0 rotate
+0.000 0.000 0.000 graphcolor
+14.00 /Times-Roman set_font
+
+%	ToySyntax
+gsave 10 dict begin
+106 162 41 18 ellipse_path
+stroke
+gsave 10 dict begin
+106 163 moveto (ToySyntax) 61 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	ToyParserUtil
+gsave 10 dict begin
+150 90 50 18 ellipse_path
+stroke
+gsave 10 dict begin
+150 91 moveto (ToyParserUtil) 79 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	ToySyntax -> ToyParserUtil
+newpath 117 145 moveto
+122 136 129 125 134 116 curveto
+stroke
+newpath 132 115 moveto
+139 108 lineto
+136 118 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	
+gsave 10 dict begin
+409 18 27 18 ellipse_path
+stroke
+end grestore
+
+%	ToyParserUtil -> 
+newpath 190 79 moveto
+242 65 331 40 378 27 curveto
+stroke
+newpath 374 26 moveto
+384 25 lineto
+375 31 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	ToyLexer
+gsave 10 dict begin
+67 306 38 18 ellipse_path
+stroke
+gsave 10 dict begin
+67 307 moveto (ToyLexer) 55 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	ToyParser
+gsave 10 dict begin
+39 234 39 18 ellipse_path
+stroke
+gsave 10 dict begin
+39 235 moveto (ToyParser) 57 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	ToyLexer -> ToyParser
+newpath 60 288 moveto
+57 280 53 270 49 261 curveto
+stroke
+newpath 47 262 moveto
+46 252 lineto
+52 261 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	ToyParser -> ToySyntax
+newpath 55 217 moveto
+63 208 74 197 83 186 curveto
+stroke
+newpath 81 184 moveto
+90 179 lineto
+85 188 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	Toy
+gsave 10 dict begin
+270 378 27 18 ellipse_path
+stroke
+gsave 10 dict begin
+270 379 moveto (Toy) 22 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	Toy -> ToyLexer
+newpath 246 369 moveto
+211 357 147 334 106 320 curveto
+stroke
+newpath 106 323 moveto
+98 317 lineto
+108 318 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	Compile
+gsave 10 dict begin
+185 306 34 18 ellipse_path
+stroke
+gsave 10 dict begin
+185 307 moveto (Compile) 48 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	Toy -> Compile
+newpath 253 364 moveto
+240 354 224 339 210 328 curveto
+stroke
+newpath 209 330 moveto
+203 322 lineto
+212 327 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	Engine
+gsave 10 dict begin
+355 306 30 18 ellipse_path
+stroke
+gsave 10 dict begin
+355 307 moveto (Engine) 39 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	Toy -> Engine
+newpath 287 364 moveto
+300 354 317 339 331 327 curveto
+stroke
+newpath 329 326 moveto
+338 321 lineto
+332 329 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	SimpleEnv
+gsave 10 dict begin
+535 306 41 18 ellipse_path
+stroke
+gsave 10 dict begin
+535 307 moveto (SimpleEnv) 62 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	Toy -> SimpleEnv
+newpath 295 371 moveto
+341 359 437 332 493 318 curveto
+stroke
+newpath 490 316 moveto
+500 316 lineto
+491 321 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	Compile -> ToySyntax
+newpath 164 292 moveto
+148 281 129 266 122 252 curveto
+113 236 109 210 108 189 curveto
+stroke
+newpath 106 190 moveto
+107 180 lineto
+111 190 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	InternalSyntax
+gsave 10 dict begin
+185 234 51 18 ellipse_path
+stroke
+gsave 10 dict begin
+185 235 moveto (InternalSyntax) 82 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	Compile -> InternalSyntax
+newpath 185 288 moveto
+185 280 185 271 185 262 curveto
+stroke
+newpath 183 262 moveto
+185 252 lineto
+188 262 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	MlAlgebra_lexer
+gsave 10 dict begin
+312 234 58 18 ellipse_path
+stroke
+gsave 10 dict begin
+312 235 moveto (MlAlgebra_lexer) 96 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	Engine -> MlAlgebra_lexer
+newpath 345 289 moveto
+340 281 333 270 328 260 curveto
+stroke
+newpath 326 262 moveto
+323 252 lineto
+330 259 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	Token
+gsave 10 dict begin
+409 162 28 18 ellipse_path
+stroke
+gsave 10 dict begin
+409 163 moveto (Token) 35 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	Engine -> Token
+newpath 364 289 moveto
+370 277 378 262 382 252 curveto
+388 235 396 208 401 189 curveto
+stroke
+newpath 398 189 moveto
+404 180 lineto
+403 190 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	Env
+gsave 10 dict begin
+535 234 27 18 ellipse_path
+stroke
+gsave 10 dict begin
+535 235 moveto (Env) 22 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	Engine -> Env
+newpath 381 297 moveto
+413 285 469 265 502 252 curveto
+504 251 506 250 508 249 curveto
+stroke
+newpath 504 248 moveto
+514 246 lineto
+506 253 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	Context
+gsave 10 dict begin
+458 234 32 18 ellipse_path
+stroke
+gsave 10 dict begin
+458 235 moveto (Context) 44 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	Engine -> Context
+newpath 375 292 moveto
+391 281 413 266 431 253 curveto
+stroke
+newpath 428 252 moveto
+438 248 lineto
+431 256 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	Engine -> InternalSyntax
+newpath 330 296 moveto
+302 284 257 265 225 251 curveto
+stroke
+newpath 226 254 moveto
+218 248 lineto
+228 250 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	SimpleEnv -> 
+newpath 549 289 moveto
+564 268 586 233 574 216 curveto
+538 164 465 82 430 42 curveto
+stroke
+newpath 428 43 moveto
+423 34 lineto
+431 40 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	SimpleEnv -> Env
+newpath 535 288 moveto
+535 280 535 271 535 262 curveto
+stroke
+newpath 533 262 moveto
+535 252 lineto
+538 262 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	MlAlgebra_parser
+gsave 10 dict begin
+302 162 61 18 ellipse_path
+stroke
+gsave 10 dict begin
+302 163 moveto (MlAlgebra_parser) 102 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	MlAlgebra_lexer -> MlAlgebra_parser
+newpath 309 216 moveto
+308 208 307 198 306 190 curveto
+stroke
+newpath 304 190 moveto
+305 180 lineto
+308 190 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	MlAlgebra
+gsave 10 dict begin
+321 90 41 18 ellipse_path
+stroke
+gsave 10 dict begin
+321 91 moveto (MlAlgebra) 61 14.00 -0.50 alignedtext
+end grestore
+end grestore
+
+%	MlAlgebra_parser -> MlAlgebra
+newpath 307 144 moveto
+309 136 311 126 314 117 curveto
+stroke
+newpath 311 117 moveto
+316 108 lineto
+316 118 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	Token -> 
+newpath 409 144 moveto
+409 119 409 74 409 45 curveto
+stroke
+newpath 407 46 moveto
+409 36 lineto
+412 46 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+
+%	Token -> MlAlgebra
+newpath 392 148 moveto
+379 138 362 124 348 112 curveto
+stroke
+newpath 347 114 moveto
+341 106 lineto
+350 111 lineto
+closepath
+gsave 0 setgray stroke grestore fill
+endpage
+grestore
+%%PageTrailer
+%%EndPage: 1
+%%Trailer
+%%Pages: 1
+end
+restore
+%%EOF

@@ -1,0 +1,103 @@
+%*********************************************************************************************************************%
+%                                                                                                                     %
+%                                                    Wallace                                                          %
+%                                                                                                                     %
+%                               François Pottier, projet Cristal, INRIA Rocquencourt                                  %
+%                                                                                                                     %
+%    Copyright 2000 Institut National de Recherche en Informatique et Automatique. Distributed only by permission.    %
+%                                                                                                                     %
+%*********************************************************************************************************************%
+% $Header: /home/pauillac/formel1/fpottier/cvs/wallace/wallace.tex,v 1.7 2000/02/11 16:15:55 fpottier Exp $
+
+\documentclass[a4paper]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amstext}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{graphics}
+\usepackage[latin1]{inputenc}
+\usepackage{latexsym}
+\usepackage[bypages,novisiblespaces]{ocamlweb}
+\usepackage{url}
+
+\special{papersize=210mm,297mm}
+\geometry{a4paper,body={5.6in,9in}}
+
+\title{Wallace}
+\author{François Pottier}
+
+% ---------------------------------------------------------------------------------------------------------------------
+% Redefine ocamlweb's sectioning commands.
+%
+% Currently (as of version 0.6), ocamlweb gives satisfactory results, except it uses \section* instead of \section,
+% which prevents the sections from showing up in the table of contents.
+
+\renewcommand{\ocwmodule}[1]{\section{Module #1}}
+\renewcommand{\ocwinterface}[1]{\section{Interface of module #1}}
+
+% Define internal sectioning commands.
+
+\newcommand{\mysection}[1]{\subsection{#1}}
+\newcommand{\mysubsection}[1]{\subsubsection{#1}}
+
+% ---------------------------------------------------------------------------------------------------------------------
+% Some useful macros.
+
+\newcommand{\norm}[1]{\mathord\mid\, #1\,\mathord\mid}
+\newcommand{\ccc}[3]{#1\leq#2\,?\,#3}
+\newcommand{\cc}[4]{\ccc{#1}{#2}{#3\leq#4}}
+\newcommand{\urow}{\partial}
+
+% ---------------------------------------------------------------------------------------------------------------------
+
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+\section{Overview}
+
+Wallace is a subtyping-constraint-handling library. It allows defining, solving and simplifying subtyping constraints,
+including conditional constraints. The library is parameterized by the definition of a type lattice, which may be
+arbitrary, provided it is ``structural'' (i.e. two types are in the subtype relation if and only if their head
+constructors are in an atomic ``sub-constructor'' relation and their common leaves are in the subtype relation).
+Multiple kinds of types are supported. Rows are fully supported (see Rémy's ``Projective ML'', LFP'92). Parametric
+polymorphism is supported. The library performs closure operations, which allow determining whether a constraint set
+has a solution. It also performs simplifications, (mostly) as described in the author's PhD thesis: canonization
+(which is now performed incrementally, during closure), garbage collection and minimization (which are performed
+upon request). The library includes support for converting (textual) type expressions into internal types, which
+includes a check for well-kindedness and well-sortedness, and some support for pretty-printing types.
+
+Note that the library does not implement a full type-checker; it knows nothing about the programming language which
+is being analyzed, or about the way constraints should be generated. These details are up to the library's client.
+
+The following picture gives an overview of Wallace's organization:
+%
+$$\scalebox{.65}{\includegraphics*{map.ps}}$$
+%
+As you can see, the library includes two entirely unrelated components. One is a generic library, which provides
+various implementations of sets and maps, with a common interface. This allows easily replacing Wallace's internal
+data structures with more efficient implementations. The other component, whose main module is \verb+Core+, contains
+the constraint-handling code. Reading \verb+core.mli+ should give you an overview of Wallace's functioning. Modules
+\verb+Print+, \verb+TextPrinter+ and \verb+TeXPrinter+ add some support for pretty-printing; they are of secondary
+importance.
+
+\section{Limitations}
+
+The library is currently undocumented. The code itself contains lots of documentation, and is accompanied by a sample
+program, \verb+toy+, which implements a small typechecker using Wallace. As far as theory is concerned, please have a
+look at the author's thesis and papers (\url{http://pauillac.inria.fr/~fpottier/}). The implementation is rather
+faithful to its theoretical description, but performs canonization incrementally (this algorithm is currently
+unpublished), and has full support for rows and conditional constraints.
+
+The library assumes that all type variables which appear within a type scheme are universally quantified. There is
+no support for ``partially quantified'' type schemes, where some variables are quantified and some variables are
+free. When writing a type-checker, this forces you to adopt a ``$\lambda$-lifted'' style, as I have done in my
+papers. This limitation might be removed in the not-too-far future.
+
+\input{wallace-auto-generated}
+
+\end{document}
+

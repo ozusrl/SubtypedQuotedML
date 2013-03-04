@@ -1,0 +1,73 @@
+Wallace, release 2000/02/11.
+By François Pottier, projet Cristal, INRIA Rocquencourt.
+
+Copyright 2000 Institut National de Recherche en Informatique et
+Automatique. Distributed only by permission.
+
+* This package contains the following components:
+
+     gromit/	      A compiler which turns a high level description of a
+		      type algebra into O'Caml code suitable for use by
+		      Wallace.
+
+     wallace/	      A subtyping-constraint-handling library.
+
+     toy/	      A small type-checker based on Wallace.
+
+The code has been built with GNU make and ocaml 2.04. Building the
+documentation requires ocamldep and ocamlweb. (Documentation is
+already built in the archive.) To build everything, type
+
+  cd toy; make depend; make
+
+External documentation is currently very scarce, but the code itself is
+thoroughly documented. Each sub-directory contains a .dvi file with a few
+introductory comments and a pretty-printed version of the source code. I'll
+be glad to answer email queries.
+
+* What's new since the last release (1999/07/16)?
+
+The 1999/07/16 release offered a single piece of code, containing both the
+constraint-handling library and an implementation of a type-checker for a
+small functional language. Furthermore, the library was specialized to the
+set of types required by this language. The new release, on the other hand,
+is much more modular, since the library has been cleanly isolated from the
+type-checker, and has been made generic with respect to the set of
+types. That is, you can define your own set of types, depending on the
+particular application you have in mind, and Wallace will accept it and work
+with it, out of the box. Gromit is a small compiler which compiles a
+high-level description of your type language into O'Caml code.
+
+The new release also offers more features. It has full support for rows, as
+described in Rémy's ``Projective ML'' -- the previous release had a few
+limitations in this respect. It performs canonization (one of the constraint
+simplification algorithms) incrementally, during closure. It offers
+well-kindedness and well-sortedness algorithms, which are useful when
+converting textual representations of types into internal ones. Lastly,
+the code is as generic as possible, and well documented.
+
+The old implementation had some more bells & whistles (e.g. command lines
+options to the type-checker) which I have had not had time to re-implement.
+You may want to keep the old implementation if you are not actually
+interested in using the code.
+
+* Is there more to be expected?
+
+Possibly. In particular, I'm not very happy with the fact that all
+type schemes must be closed (i.e. unquantified variables are not allowed),
+because it is rather unconventional, and causes some problems when
+generalization is not allowed (e.g. when typing imperative code). I
+might fix this in the future.
+
+* What can I do with Wallace?
+
+Hopefully, it should be reasonably easy for you to plug Wallace into
+your own type-checker and let it do constraint simplification for you,
+regardless of the programming language you are interested in analyzing.
+If you are successful, do let me know! (You can let me know if you have
+problems, too. I'll try to help ;)
+
+--
+François Pottier
+Francois.Pottier@inria.fr
+http://pauillac.inria.fr/~fpottier/

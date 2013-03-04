@@ -1,6 +1,6 @@
 open Common
 open Format
-open Types4
+open Types
 
 let infix_ops = ["+"; "-"; "*"; "/"; "="; "::"]
 

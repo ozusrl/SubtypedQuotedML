@@ -38,10 +38,9 @@ module EvalBase (EvalExtend : Eval) : Eval = struct
       let clos = ClosV (Closure (env', arg, body)) in
       set_value env' id clos; clos
 
-  | CondE [] -> UnitV
-  | CondE ((g, e) :: r) -> (match eval env g with
-    | ConstV (CBool true) -> eval env e
-    | _ -> eval env (CondE r))
+  | IfE (guard, thenE, elseE) -> (match eval env guard with
+    | ConstV (CBool true) -> eval env thenE
+    | _ -> eval env elseE)
 
   | RefE exp -> RefV (ref (eval env exp))
   | DerefE exp -> (match eval env exp with
@@ -113,14 +112,11 @@ module rec StagedEval : Eval = struct
   | FixE (id, (Abs (arg, body))) ->
       FixE (id, (Abs (arg, eval_staged env body n)))
 
-  | CondE [] -> CondE []
-  | CondE ((g, b) :: r) ->
+  | IfE (g, t, e) ->
       let g' = eval_staged env g n in
-      let b' = eval_staged env b n in
-      let cond_rest = (match eval_staged env (CondE r) n with
-      | CondE e -> e
-      | _ -> failwith "") in (* suppress warning *)
-      CondE ((g', b') :: cond_rest)
+      let t' = eval_staged env t n in
+      let e' = eval_staged env e n in
+      IfE (g', t', e')
 
   | ValueE v -> ValueE v
   | BoxE exp -> BoxE (eval_staged env exp (n+1))

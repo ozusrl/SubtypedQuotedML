@@ -67,8 +67,7 @@ exp:
   | LP CONS RP                  { IdE "::" }
   | LP exp RP                   { $2 }
 
-  | IF exp THEN exp             { CondE ( [ ($2, $4) ] ) }
-  | IF exp THEN exp else_part   { CondE ( ($2, $4) :: $5 ) }
+  | IF exp THEN exp else_part   { IfE ($2, $4, $5) }
   | lst                         { $1 }
   | record                      { $1 }
   | exp DOT ID                  { SelectE ($1, $3) }
@@ -84,8 +83,8 @@ exp:
 
 else_part:
   | ELSEIF exp THEN exp else_part
-                                { ($2, $4) :: $5 }
-  | ELSE exp                    { [ConstE (CBool true), $2] }
+                                { IfE ($2, $4, $5) }
+  | ELSE exp                    { $2 }
 
 func:
   | ID func                     { Abs ($1, AbsE $2) }

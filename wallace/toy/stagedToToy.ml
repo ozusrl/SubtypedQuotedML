@@ -17,6 +17,7 @@ let rec stagedToToy
 | LetInE (Valbind (id, bind), body) ->
     ELet (false, [PVar id, stagedToToy bind], stagedToToy body)
 | FixE _ -> failwith "can't translate fix to toy."
+| IfE (e1, e2, e3) -> EIf (stagedToToy e1, stagedToToy e2, stagedToToy e3)
 
 (* refs *)
 | RefE exp         -> EApp (EVar "ref", stagedToToy exp)

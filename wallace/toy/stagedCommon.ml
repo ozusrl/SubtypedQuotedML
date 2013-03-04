@@ -18,7 +18,7 @@ and exp  =
   | AbsE     of abs
   | LetInE   of dec * exp
   | FixE     of id * abs
-  | CondE    of (exp * exp) list
+  | IfE      of (exp * exp * exp)
 
   | RefE     of exp
   | DerefE   of exp

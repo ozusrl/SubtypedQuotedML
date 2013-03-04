@@ -465,21 +465,15 @@ let rec typ (lvls : int list) (envs : tyenv list) : (exp -> ty) =
     let rtyp = typ lvls f_body_env body in
     unify rtyp rtyv;
     TFun (ptyv, rtyv)
-| CondE [] -> failwith "CondE with empty cond list"
-| CondE ((guard, body) :: rest) ->
-    let rec iter body_ty = function
-    | [] -> body_ty
-    | (guard, body) :: rest ->
-        let guard_ty = typ lvls envs guard in
-        unify guard_ty TBool;
-        let body_ty' = typ lvls envs body in
-        unify body_ty body_ty';
-        iter body_ty rest
-    in
+
+| IfE (guard, thenE, elseE) ->
     let guard_ty = typ lvls envs guard in
     unify guard_ty TBool;
-    let body_ty  = typ lvls envs body in
-    iter body_ty rest
+    let then_ty = typ lvls envs thenE in
+    let else_ty = typ lvls envs elseE in
+    unify then_ty else_ty;
+    then_ty
+
 | SeqE (e1, e2) ->
     let _ = typ lvls envs e1 in
     typ lvls envs e2

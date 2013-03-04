@@ -107,12 +107,11 @@ let rec translate exp envStack : (exp * ctxs) =
         let body', ctxs = translate body (env'' :: rest_envs) in
         (FixE (id, (Abs (arg, body'))), ctxs)
 
-    | CondE [] -> (CondE [], [])
-    | CondE ((g, b) :: r) ->
-        let g', ctxs = translate g envStack in
-        let b', ctxs' = translate b envStack in
-        let ((CondE rest), ctxs'') = translate (CondE r) envStack in
-        (CondE ((g', b') :: rest), merge_ctxs ctxs (merge_ctxs ctxs' ctxs''))
+    | IfE (e1, e2, e3) ->
+        let e1', ctxs = translate e1 envStack in
+        let e2', ctxs' = translate e2 envStack in
+        let e3', ctxs'' = translate e3 envStack in
+        (IfE (e1', e2', e3'), merge_ctxs ctxs (merge_ctxs ctxs' ctxs''))
 
     | RefE exp ->
         let exp', ctxs = translate exp envStack in

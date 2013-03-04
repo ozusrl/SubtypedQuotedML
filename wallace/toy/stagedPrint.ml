@@ -51,29 +51,22 @@ let rec print_exp = function
     printf "@]";
 | FixE (id, abs) ->
     printf "@[<hov 2>fix@ %s@ ->@ " id; print_abs abs; printf "@]";
-| CondE conds ->
-    let print_cond s (g, b) =
-      printf "@[<hov 2>%s@ " s;
-      print_exp g;
-      printf "@ then@ ";
-      print_exp b;
-      printf "@]";
+| IfE (guard, thenE, elseE) ->
+    let rec print_elseif = function
+    | IfE (g, t, e) ->
+        printf "@[<hov 2>@ elseif@ "; print_exp g;
+        printf "@ then@;<1 2>"; print_exp t; printf "@]";
+        print_elseif e
+    | exp ->
+        printf "else@;<1 2>"; print_exp exp
     in
-    let first_cond = List.hd conds in
-    let rest_conds = List.tl conds in
-    let rec print_conds = function
-    | [] -> ()
-    | [c] -> print_cond "else" c
-    | f :: r ->
-        print_cond "elseif" f;
-        print_space ();
-        print_conds r
+    let print_if g t e =
+      printf "@[<hov 2>if@ "; print_exp g;
+      printf "@ then@;<1 2>"; print_exp t; printf "@]";
+      print_elseif e
     in
-    open_hvbox 0;
-    print_cond "if" first_cond;
-    print_space ();
-    print_conds rest_conds;
-    close_box ()
+    print_if guard thenE elseE
+
 | RefE exp   -> printf "@[<hov 2>ref@ "; print_exp exp; printf "@]";
 | DerefE exp -> print_string "!"; print_exp exp
 | AssignE (e1, e2) ->

@@ -2,6 +2,7 @@ open StagedCommon
 open StagedTranslate
 open StagedEval
 open StagedPrint
+open StagedToToy
 
 let inferty_and_print exp env =
   try

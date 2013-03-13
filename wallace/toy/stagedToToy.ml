@@ -6,6 +6,7 @@ let rec stagedToToy
 | IdE id -> EVar id
 | ConstE (CInt i) -> EConstant (ConstInt i)
 | ConstE (CBool b) -> EConstant (ConstBool b)
+| PairE (e1, e2) -> EApp (EApp (EVar "_pair", stagedToToy e1), stagedToToy e2)
 | EmpLstE -> EVector []
 | AppE (e1, e2) -> EApp (stagedToToy e1, stagedToToy e2)
 | AbsE (Abs (id, exp)) -> EFun [[PVar id], stagedToToy exp]
@@ -35,4 +36,3 @@ let rec stagedToToy
     EApp (EApp (ERecordUpdate id, stagedToToy exp), stagedToToy newexp)
 
 | SeqE (e1, e2) -> ESeq (stagedToToy e1, stagedToToy e2)
-

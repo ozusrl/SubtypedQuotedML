@@ -83,6 +83,11 @@ let rec translate exp envStack : (exp * ctxs) =
 
     | IdE i -> ((lookup env i), [])
 
+    | PairE (e1, e2) ->
+        let (e1', ctxs1) = translate e1 envStack in
+        let (e2', ctxs2) = translate e2 envStack in
+        (PairE (e1', e2'), merge_ctxs ctxs1 ctxs2)
+
     | EmpLstE -> (EmpLstE, [])
 
     | AppE (e1, e2) ->

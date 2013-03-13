@@ -29,6 +29,10 @@ let rec print_exp = function
 | IdE id -> print_string id
 | ConstE const -> print_const const
 | EmpLstE -> print_string "[]"
+| PairE (e1, e2) ->
+    printf "("; print_exp e1;
+    printf ",@;<1 2>";
+    print_exp e2; printf ")"
 | AppE (e1, e2) -> (match e1, e2 with
   | AppE (IdE i, e1'), e2' when List.mem i infix_ops ->
       printf "@[<hov 2>(";
@@ -105,6 +109,10 @@ and print_value = function
 | ConstV c -> print_const c
 | ClosV f  -> print_funval f
 | BoxV e   -> print_exp (BoxE e)
+| PairV (v1, v2) ->
+    printf "("; print_value v1;
+    printf ",@;<1 2>";
+    print_value v2; printf ")"
 | ListV vals ->
     let rec iter = function
     | []      -> ()
@@ -132,9 +140,11 @@ and print_funval = function
 | Closure (env, id, body)      -> print_abs (Abs (id, body))
 
 let rec print_ty = function
-| TUnit    -> print_string "()"
 | TInt     -> print_string "int"
 | TBool    -> print_string "bool"
+| TUnit    -> print_string "()"
+| TPair (t1, t2) ->
+    printf "("; print_ty t1; printf "@ *@;<1 2>"; print_ty t2; printf ")"
 | TList ty -> printf "["; print_ty ty; printf "]"
 | TRef ty  -> printf "ref "; print_ty ty
 | TFun (t1, t2) ->

@@ -20,6 +20,8 @@ type ty =
  | TBool
  | TUnit
 
+ | TPair of ty * ty
+
  | TList of ty
  | TRef  of ty
 
@@ -157,9 +159,10 @@ and subst_tyrec tyrec ss = match tyrec, ss with
 
 and subst ty ss = match ty, ss with
   | _, [] -> ty
-  | TUnit, _ -> TUnit
-  | TInt, _ -> TInt
+  | TInt, _  -> TInt
   | TBool, _ -> TBool
+  | TUnit, _ -> TUnit
+  | TPair (t1, t2), ss -> TPair (subst t1 ss, subst t2 ss)
   | TList t, ss -> TList (subst t ss)
   | TRef t, ss -> TRef (subst t ss)
   | TFun (t1, t2), ss -> TFun (subst t1 ss, subst t2 ss)
@@ -216,11 +219,12 @@ let rec norm_field = function
 let rec freetyvars (ty : ty) : linkvar list =
   match norm_ty ty with
   | TUnit
-  | TInt
-  | TBool -> []
+  | TBool
+  | TInt  -> []
+  | TPair (t1, t2) -> unique (freetyvars t1 @ freetyvars t2)
   | TList t
   | TRef  t -> freetyvars t
-  | TFun (t1, t2) -> unique(freetyvars t1 @ freetyvars t2)
+  | TFun (t1, t2) -> unique (freetyvars t1 @ freetyvars t2)
   | TRec tyrec    -> freetyvars_tyrec tyrec
   | TVar typevar  -> [TV typevar] (* typevar must be a NoLink *)
   | TBox (tyrec, ty) -> freetyvars_tyrec tyrec @ freetyvars ty
@@ -381,6 +385,15 @@ and unify (t1 : ty) (t2 : ty) : unit =
   let t1' = norm_ty t1 in
   let t2' = norm_ty t2 in
   match (t1', t2') with
+  | TInt,  TInt
+  | TBool, TBool
+  | TUnit, TUnit -> ()
+  | TPair (t1, t2), TPair (t1', t2') -> unify t1 t1'; unify t2 t2'
+  | TList ty1, TList ty2 -> unify ty1 ty2
+  | TRef ty1,  TRef ty2  -> unify ty1 ty2
+  | TFun (t1, t2), TFun (t1', t2') -> unify t1 t1'; unify t2 t2'
+  | TRec tyrec1, TRec tyrec2 -> unify_recs tyrec1 tyrec2
+
   | TVar typevar1, TVar typevar2 ->
       if typevar1 = typevar2 then ()
       else
@@ -395,15 +408,7 @@ and unify (t1 : ty) (t2 : ty) : unit =
   | ty, TVar typevar ->
       link_typevar_to_ty typevar ty
 
-  | TUnit, TUnit
-  | TInt,  TInt
-  | TBool, TBool -> ()
-  | TList ty1, TList ty2 -> unify ty1 ty2
-  | TRef ty1,  TRef ty2  -> unify ty1 ty2
-  | TFun (a, b), TFun (c, d) -> unify a c; unify b d
-  | TRec tyrec1, TRec tyrec2 -> unify_recs tyrec1 tyrec2
   | TBox (gamma1, t1), TBox (gamma2, t2) -> unify_recs gamma1 gamma2; unify t1 t2
-
   | t1, t2 -> failwith "can't unify types"
 
 (* ---}}}---------------------------------------------------------------------*)
@@ -440,6 +445,10 @@ let rec typ (lvls : int list) (envs : tyenv list) : (exp -> ty) =
 | ConstE (CInt _) -> TInt
 | ConstE (CBool _) -> TBool
 | EmpLstE -> TList (TVar (new_typevar lvl))
+| PairE (e1, e2) ->
+    let t1 = typ lvls envs e1 in
+    let t2 = typ lvls envs e2 in
+    TPair (t1, t2)
 | AppE (e1, e2) ->
     let funty = typ lvls envs e1 in
     let argty = typ lvls envs e2 in
@@ -553,6 +562,10 @@ and stdenv =
       ; ("empty", Scheme ([tv "a"], FieldType (TFun (TList (ref0 "a"), TBool))))
       ; ("nth",   Scheme ( [tv "a"]
                          , FieldType (TFun (TInt, TFun (TList (ref0 "a"), ref0 "a")))))
+      ; ("fst",   Scheme ( [tv "a"; tv "b"]
+                         , FieldType (TFun (TPair (ref0 "a", ref0 "b"), ref0 "a"))))
+      ; ("snd",   Scheme ( [tv "a"; tv "b"]
+                         , FieldType (TFun (TPair (ref0 "a", ref0 "b"), ref0 "b"))))
       ]
 
 let stdenv_tyrec =

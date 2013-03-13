@@ -20,6 +20,11 @@ module EvalBase (EvalExtend : Eval) : Eval = struct
   | ConstE c -> ConstV c
   | EmpLstE -> ListV []
 
+  | PairE (e1, e2) ->
+      let v1 = eval env e1 in
+      let v2 = eval env e2 in
+      PairV (v1, v2)
+
   | AppE (f, p) ->
       let f' = eval env f in
       let p' = eval env p in

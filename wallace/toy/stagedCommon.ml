@@ -24,6 +24,8 @@ and exp  =
   | DerefE   of exp
   | AssignE  of (exp * exp)
 
+  | PairE    of (exp * exp)
+
   (* ValueE is returned from eval_staged when a lifted expression is unboxed *)
   | ValueE   of value
   | BoxE     of exp
@@ -50,6 +52,7 @@ and field = (id * exp)
 and value =
   | ConstV  of const
   | ClosV   of fun_val
+  | PairV   of (value * value)
   | BoxV    of exp
   | ListV   of value list
   | RecV    of (id * value) list
@@ -61,6 +64,7 @@ exception NotImplemented of exp
 let rec val_type = function
 | ConstV (CInt _) -> "TyInt"
 | ConstV (CBool _) -> "TyBool"
+| PairV _ -> "TyPair"
 | ListV _ -> "TyList"
 | ClosV _ -> "TyFun"
 | BoxV _ -> "TyBox"
@@ -139,6 +143,16 @@ let stdenv =
     | not_int -> raise (TypeMismatch ("TyInt", val_type not_int)))))
   in
 
+  let fst = ClosV (StdFun (StdFunction ("fst", function
+    | PairV (v1, v2) -> v1
+    | not_pair       -> raise (TypeMismatch ("TyPair", val_type not_pair)))))
+  in
+
+  let snd = ClosV (StdFun (StdFunction ("snd", function
+    | PairV (v1, v2) -> v2
+    | not_pair       -> raise (TypeMismatch ("TyPair", val_type not_pair)))))
+  in
+
   (* standard environment *)
   [ ("+",     ref (mk_arith_fun "+" (+)))
   ; ("-",     ref (mk_arith_fun "-" (-)))
@@ -150,6 +164,8 @@ let stdenv =
   ; ("tail",  ref tail_v)
   ; ("empty", ref empty_ty)
   ; ("nth",   ref nth)
+  ; ("fst",   ref fst)
+  ; ("snd",   ref snd)
   ]
 
 (* Mappings of OCaml function and standard environment }}} **********)

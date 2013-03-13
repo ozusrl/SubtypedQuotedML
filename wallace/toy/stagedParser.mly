@@ -67,6 +67,8 @@ exp:
   | LP CONS RP                  { IdE "::" }
   | LP exp RP                   { $2 }
 
+  | LP exp COMMA exp RP         { PairE ($2, $4) }
+
   | IF exp THEN exp else_part   { IfE ($2, $4, $5) }
   | lst                         { $1 }
   | record                      { $1 }

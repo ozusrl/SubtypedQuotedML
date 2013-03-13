@@ -305,6 +305,8 @@ let builtin = List.fold_right (fun (x, sigma) env -> Env.bind_let x sigma env)
 (constants @ [
 
   "_pair", simple "'a -> 'b -> 'a * 'b";
+  "fst", simple "'a * 'b -> 'a";
+  "snd", simple "'a * 'b -> 'b";
   "_uncurry", simple "('a -> 'b -> 'c) -> 'a * 'b -> 'c";
 
   "_rec", simple "('a -> 'a) -> 'a";

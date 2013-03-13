@@ -51,11 +51,12 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
         "evaluated with RecordEval:"
         print_value
         "error while running record calc: ";
+
+        Printf.printf "translated expression in toy:\n";
+        Toy.handle_phrase (ToySyntax.PhraseExpr (stagedToToy translation));
+
     with exc -> print_endline (Printexc.to_string exc));
 
-
-    Printf.printf "in toy:\n";
-    Toy.handle_phrase (ToySyntax.PhraseExpr (stagedToToy exp));
 
     print_endline "----------------";
     (* run only one expression when in repl *)

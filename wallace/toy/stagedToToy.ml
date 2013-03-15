@@ -10,11 +10,11 @@ let rec stagedToToy
 | EmpLstE -> EVector []
 | AppE (e1, e2) -> EApp (stagedToToy e1, stagedToToy e2)
 | AbsE (Abs (id, exp)) -> EFun [[PVar id], stagedToToy exp]
-| LetInE (Valbind (id, (FixE (fixid, Abs (fixid', abs)))), body) ->
-    if fixid = fixid' then
-      ELet (true, [PVar id, stagedToToy abs], stagedToToy body)
+| LetInE (Valbind (id, (FixE (fixid, Abs (argid, abs)))), body) ->
+    if fixid = id then
+      ELet (true, [PVar argid, stagedToToy abs], stagedToToy body)
     else
-      failwith "fixid != fixid'"
+      failwith "fixid != id"
 | LetInE (Valbind (id, bind), body) ->
     ELet (false, [PVar id, stagedToToy bind], stagedToToy body)
 | FixE _ -> failwith "can't translate fix to toy."

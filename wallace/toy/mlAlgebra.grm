@@ -81,6 +81,9 @@ signature begin
     let Bottom < String
     let String < Top
 
+
+    let Int < Float
+    let Char < Int
   end
 
   lattice Record begin

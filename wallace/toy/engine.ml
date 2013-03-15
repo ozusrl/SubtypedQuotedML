@@ -311,11 +311,16 @@ let builtin = List.fold_right (fun (x, sigma) env -> Env.bind_let x sigma env)
 
   "_rec", simple "('a -> 'a) -> 'a";
 
-  "ref", simple "'a -> ('a, 'a) ref";
+  "ref", simple "int -> (int, int) ref";
   ":=", simple "('a, 'b) ref -> 'a -> unit";
   "!", simple "('a, 'b) ref -> 'b";
   "_deref", simple "('a -> 'b) -> (0, 'a) ref -> 'b";
 
+  "intToFloat", simple "int -> float";
+  "intToChar", simple "int -> char";
+  "charToInt", simple "char -> int";
+  "floatToInt", simple "float -> int";
+    
   "{}", simple "{ RAbs }";
   "@@", complex "{ 'phi1 } -> { 'phi2 } -> { 'phi3 }" [
     "if RAbs < 'phi1 then 'phi2 < 'phi3";

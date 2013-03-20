@@ -416,28 +416,35 @@ and unify (t1 : ty) (t2 : ty) : unit =
 (* expansive test --{{{-------------------------------------------------------*)
 
 (* stagedv: returns whether expression is valid in staege n *)
-let rec stagedv n = function
-| IdE _ | ConstE _ | EmpLstE -> true
-| AppE (e1, e2) -> stagedv n e1 && stagedv n e2
-| AbsE _ -> true
-| LetInE (Valbind (_, e), body) -> stagedv n e && stagedv n body
-| FixE _ -> true
-| IfE (e1, e2, e3) -> stagedv n e1 && stagedv n e2 && stagedv n e3
-| RefE e | DerefE e -> stagedv n e
-| AssignE (e1, e2)
-| PairE (e1, e2) -> stagedv n e1 && stagedv n e2
+let rec stagedv n exp =
+  if n = 0 then
+    match exp with
+    | ConstE _ | AbsE _ | FixE _ -> true
+    | BoxE e -> stagedv 1 e
+    | _ -> false
+  else
+    match exp with    
+    | IdE _ | ConstE _ | EmpLstE -> true
+    | AppE (e1, e2) -> stagedv n e1 && stagedv n e2
+    | AbsE (Abs(_, e)) -> stagedv n e
+    | LetInE (Valbind (_, e), body) -> stagedv n e && stagedv n body
+    | FixE (_, Abs (_, e)) -> stagedv n e
+    | IfE (e1, e2, e3) -> stagedv n e1 && stagedv n e2 && stagedv n e3
+    | RefE e | DerefE e -> stagedv n e
+    | AssignE (e1, e2)
+    | PairE (e1, e2) -> stagedv n e1 && stagedv n e2
 
-| ValueE _ -> failwith "ValueE in stagedv test"
-| BoxE e   -> stagedv (n+1) e
-| UnboxE e -> if n = 1 then false else stagedv (n-1) e
-| RunE e   -> stagedv n e (* TODO: bundan emin ol *)
-| LiftE e  -> stagedv n e
+    | ValueE _ -> failwith "ValueE in stagedv test"
+    | BoxE e   -> stagedv (n+1) e
+    | UnboxE e -> if n = 1 then false else stagedv (n-1) e
+    | RunE e   -> stagedv n e
+    | LiftE e  -> stagedv n e
 
-| EmptyRecE -> true
-| SelectE (e, _) -> stagedv n e
-| RecUpdE (e1, _, e2) -> stagedv n e1 && stagedv n e2
-| SeqE (e1, e2) -> stagedv n e1 && stagedv n e2
-
+    | EmptyRecE -> true
+    | SelectE (e, _) -> stagedv n e
+    | RecUpdE (e1, _, e2) -> stagedv n e1 && stagedv n e2
+    | SeqE (e1, e2) -> stagedv n e1 && stagedv n e2
+    
 (* expansive: returns whether expression can expand to a store *)
 let rec expansive n = function
 | IdE _    -> false

@@ -311,7 +311,7 @@ let builtin = List.fold_right (fun (x, sigma) env -> Env.bind_let x sigma env)
 
   "_rec", simple "('a -> 'a) -> 'a";
 
-  "ref", simple "int -> (int, int) ref";
+  "ref", simple "'a -> ('a, 'a) ref";
   ":=", simple "('a, 'b) ref -> 'a -> unit";
   "!", simple "('a, 'b) ref -> 'b";
   "_deref", simple "('a -> 'b) -> (0, 'a) ref -> 'b";

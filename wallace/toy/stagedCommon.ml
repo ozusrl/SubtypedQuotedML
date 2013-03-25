@@ -88,6 +88,66 @@ let set_value env id value =
 
 let lookup env id = !(lookup_ref env id)
 
+(* expansive test --{{{-------------------------------------------------------*)
+
+(* stagedv: returns whether expression is valid in staege n *)
+let rec stagedv n exp =
+  if n = 0 then
+    match exp with
+    | ConstE _ | AbsE _ | FixE _ -> true
+    | BoxE e -> stagedv 1 e
+    | _ -> false
+  else
+    match exp with
+    | IdE _ | ConstE _ | EmpLstE -> true
+    | AppE (e1, e2) -> stagedv n e1 && stagedv n e2
+    | AbsE (Abs(_, e)) -> stagedv n e
+    | LetInE (Valbind (_, e), body) -> stagedv n e && stagedv n body
+    | FixE (_, Abs (_, e)) -> stagedv n e
+    | IfE (e1, e2, e3) -> stagedv n e1 && stagedv n e2 && stagedv n e3
+    | RefE e | DerefE e -> stagedv n e
+    | AssignE (e1, e2)
+    | PairE (e1, e2) -> stagedv n e1 && stagedv n e2
+
+    | ValueE _ -> failwith "ValueE in stagedv test"
+    | BoxE e   -> stagedv (n+1) e
+    | UnboxE e -> if n = 1 then false else stagedv (n-1) e
+    | RunE e   -> stagedv n e
+    | LiftE e  -> stagedv n e
+
+    | EmptyRecE -> true
+    | SelectE (e, _) -> stagedv n e
+    | RecUpdE (e1, _, e2) -> stagedv n e1 && stagedv n e2
+    | SeqE (e1, e2) -> stagedv n e1 && stagedv n e2
+
+(* expansive: returns whether expression can expand to a store *)
+let rec expansive n = function
+| IdE _    -> false
+| ConstE _ -> false
+| EmpLstE  -> false
+| AppE _   -> true
+| AbsE (Abs (_, exp)) | FixE (_, Abs (_, exp)) ->
+    if n = 0 || stagedv 1 exp then false else true
+| LetInE (Valbind (_, e1), e2) -> expansive n e1 || expansive n e2
+| IfE (e1, e2, e3) -> expansive n e1 || expansive n e2 || expansive n e3
+
+| RefE _   -> true
+| DerefE e -> expansive n e
+| AssignE (e1, e2) -> expansive n e1 || expansive n e2
+
+| PairE (e1, e2) -> expansive n e1 || expansive n e2
+
+| ValueE e  -> failwith "ValueE in expansive."
+| BoxE e    -> if stagedv 1 e then false else true
+| UnboxE e  -> true
+| RunE e    -> true (* TODO *)
+| LiftE e   -> expansive n e
+| EmptyRecE -> false
+| SelectE (e, _)      -> expansive n e
+| RecUpdE (e1, _, e2) -> expansive n e1 || expansive n e2
+| SeqE (e1, e2)       -> expansive n e1 || expansive n e2
+
+(* ---}}}---------------------------------------------------------------------*)
 
 (* Mappings of OCaml function and standard environment {{{ **********)
 

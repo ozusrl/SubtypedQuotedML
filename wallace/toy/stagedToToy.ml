@@ -16,7 +16,10 @@ let rec stagedToToy
     else
       failwith "fixid != id"
 | LetInE (Valbind (id, bind), body) ->
-    ELet (false, [PVar id, stagedToToy bind], stagedToToy body)
+    if expansive 0 bind then
+      EApp (EFun [[PVar id], stagedToToy body], stagedToToy bind)
+    else
+      ELet (false, [PVar id, stagedToToy bind], stagedToToy body)
 | FixE _ -> failwith "can't translate fix to toy."
 | IfE (e1, e2, e3) -> EIf (stagedToToy e1, stagedToToy e2, stagedToToy e3)
 

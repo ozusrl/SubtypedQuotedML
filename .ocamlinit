@@ -1,12 +1,10 @@
-#use "topfind";;
-#require "sexplib";;
 #load "common.cmo";;
-#load "types4.cmo";;
+#load "types.cmo";;
 #load "parser.cmo";;
 #load "lexer.cmo";;
 #load "print.cmo";;
 open Common;;
-open Types4;;
+open Types;;
 open Print;;
 let var1 = new_typevar 0;;
 let var2 = new_typevar 0;;

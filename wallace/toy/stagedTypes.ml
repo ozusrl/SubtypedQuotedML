@@ -530,8 +530,10 @@ let rec typ (lvls : int list) (envs : tyenv list) : (exp -> ty) =
       else
         generalize lvl (FieldType rhsty)
     in
-    let letenv = add_to_envlist id rhs_tyscm envs in
-    typ lvls letenv body
+    (*let letenv = add_to_envlist id rhs_tyscm envs in*)
+    (*typ lvls envs body*)
+    let letenv = Row (id, rhs_tyscm, List.hd envs) in
+    typ lvls (letenv :: List.tl envs) body
 | FixE (fname, Abs (id, body)) ->
     let ptyv       = TVar (new_typevar lvl) in
     let rtyv       = TVar (new_typevar lvl) in

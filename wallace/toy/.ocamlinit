@@ -1,0 +1,22 @@
+#load "stagedCommon.cmo";;
+#load "stagedTypes.cmo";;
+#load "stagedParser.cmo";;
+#load "stagedLexer.cmo";;
+#load "stagedPrint.cmo";;
+open StagedCommon;;
+open StagedTypes;;
+open StagedPrint;;
+let var1 = new_typevar 0;;
+let var2 = new_typevar 0;;
+let var3 = new_typevar 0;;
+let var4 = new_typevar 0;;
+let var5 = new_typevar 0;;
+let var6 = new_typevar 0;;
+let var7 = new_typevar 0;;
+let var8 = new_typevar 0;;
+
+
+let expstr str = StagedParser.main StagedLexer.mytoken (Lexing.from_string str);; 
+let exp _ = StagedParser.main StagedLexer.mytoken (Lexing.from_channel stdin);;
+let typexp _ = typ [0] [stdenv_tyrec] (exp ());;
+let typstr str = typ [0] [stdenv_tyrec] (expstr str);;

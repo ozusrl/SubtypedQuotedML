@@ -423,38 +423,19 @@ let rec generalize lvl (fld : field) : fieldScheme =
   let tvs = List.filter notfreeincontext (unique (freetyvars_field fld)) in
   Scheme (tvs, fld)
 
-let add_to_envlist id (scm : fieldScheme) (envs : tyenv list) =
-  let hd = List.hd envs in
-
-  let is_nolink = function
-  | NoLink _ -> true
-  | _ -> false
-  in
-
-  let rec add_btm id (env : fieldScheme rhoMap) : tyenv = match env with
-  | EmptyRec -> failwith "EmptyRec in add_btm"
-  | Rho recvar ->
-      let (link, lvl, btms) = !recvar in
-      assert (is_nolink link);
-      let new_ref = ref (NoLink (new_name ()), lvl, IdSet.add id btms) in
-      Row (id, scm, Rho new_ref)
-  | Row (id', scm', next) -> Row (id', scm', add_btm id next)
-  in
-
+let add_to_envlist lvl id (scm : fieldScheme) (envs : tyenv list) =
   let rec add_or_replace id (scm : fieldScheme) : tyenv -> tyenv = function
-  | EmptyRec -> Row (id, scm, EmptyRec) (* TODO: bu durumun olusmamasi lazim? *)
-  | Rho recvar ->
-      let (link, lvl, btms) = !recvar in
-      assert (is_nolink link);
-      let new_ref = ref (NoLink (new_name ()), lvl, IdSet.add id btms) in
-      Row (id, scm, Rho new_ref)
+  | EmptyRec -> Row (id, scm, EmptyRec)
+  | Rho recvar ->  
+      let theta, newrho = new_fieldvar lvl, new_recvar lvl (IdSet.singleton id) in
+      unify_recs (Rho recvar) (Row (id, FieldVar theta, Rho newrho));
+      (Row (id, scm, Rho newrho))
   | Row (id', scm', next) ->
       if id' = id then
-        Row (id, scm, add_btm id next)
+        Row (id, scm, next)
       else
         Row (id', scm', add_or_replace id scm next)
   in
-
   add_or_replace id scm (List.hd envs) :: List.tl envs
 
 let inc_level lvls = (List.hd lvls + 1) :: List.tl lvls
@@ -488,7 +469,7 @@ let rec typ (lvls : int list) (envs : tyenv list) : (exp -> ty) =
     retty
 | AbsE (Abs (id, body)) ->
     let ptyv       = TVar (new_typevar lvl) in (* parameter type *)
-    let f_body_env = add_to_envlist id (Scheme ([], FieldType ptyv)) envs in
+    let f_body_env = add_to_envlist lvl id (Scheme ([], FieldType ptyv)) envs in
     let rtyp       = typ lvls f_body_env body in (* return value type *)
     TFun (ptyv, rtyp)
 | LetInE (Valbind (id, rhs), body) ->
@@ -500,14 +481,14 @@ let rec typ (lvls : int list) (envs : tyenv list) : (exp -> ty) =
       else
         generalize lvl (FieldType rhsty)
     in
-    let letenv = add_to_envlist id rhs_tyscm envs in
+    let letenv = add_to_envlist lvl id rhs_tyscm envs in
     typ lvls letenv body
 | FixE (fname, Abs (id, body)) ->
     let ptyv       = TVar (new_typevar lvl) in
     let rtyv       = TVar (new_typevar lvl) in
     let f_body_env =
-      add_to_envlist id (Scheme ([], FieldType ptyv))
-        (add_to_envlist fname (Scheme ([], FieldType (TFun (ptyv, rtyv)))) envs)
+      add_to_envlist lvl id (Scheme ([], FieldType ptyv))
+        (add_to_envlist lvl fname (Scheme ([], FieldType (TFun (ptyv, rtyv)))) envs)
     in
     let rtyp = typ lvls f_body_env body in
     unify rtyp rtyv;
@@ -607,13 +588,11 @@ and stdenv =
       ]
 
 let stdenv_tyrec =
-  let rec iter bottoms = function
-  | [] ->
-      let new_rho_id = new_name () in
-      Rho (ref (NoLink new_rho_id, 0, bottoms))
-  | (id, scm) :: rest -> Row (id, scm, iter (IdSet.add id bottoms) rest)
+  let rec iter = function
+  | [] -> EmptyRec
+  | (id, scm) :: rest -> Row (id, scm, iter rest)
   in
-  iter IdSet.empty stdenv
+  iter stdenv
 
 (* ---}}}---------------------------------------------------------------------*)
 

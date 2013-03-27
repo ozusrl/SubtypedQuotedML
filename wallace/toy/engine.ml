@@ -309,6 +309,11 @@ let builtin = List.fold_right (fun (x, sigma) env -> Env.bind_let x sigma env)
   "snd", simple "'a * 'b -> 'b";
   "_uncurry", simple "('a -> 'b -> 'c) -> 'a * 'b -> 'c";
 
+  "=", simple "'a -> 'a -> bool";
+  "+", simple "float -> float -> float";
+  "-", simple "float -> float -> float";
+  "*", simple "float -> float -> float";
+
   "_rec", simple "('a -> 'a) -> 'a";
 
   "ref", simple "'a -> ('a, 'a) ref";

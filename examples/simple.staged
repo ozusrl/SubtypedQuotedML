@@ -1,5 +1,5 @@
-let fac = fix fac n -> if n = 0 then 1 else n * fac (n-1) in fac 5;
-let fac_staged = fix fac n -> if n = 0 then <1> else <~lift(n) * ~(fac (n-1))> in fac_staged 4;
+let fac = fix fac n -> if n = 0 then 1 else n * fac (n-1) in fac 5;;
+let fac_staged = fix fac n -> if n = 0 then <1> else <~lift(n) * ~(fac (n-1))> in fac_staged 4;;
 
 let pow_gen =
   fun n ->
@@ -11,25 +11,28 @@ let pow_gen =
 in let cubeCode = pow_gen 3 <v>
 in let cube = run(<fun v -> ~cubeCode >)
 in cube 4 + cube 3  
-;
+;;
 
 let temp = lift 42
-in temp;
+in temp;;
 
 let temp = < ~(lift (42 + 5)) >
-in temp;
+in temp;;
 
 let simple = < 42 + 5 >
-in simple;
+in simple;;
+
+let bad = < 42 + 5 >
+in bad 33;;
 
 let dot = fix dot lst1 -> fun lst2 ->
   if lst1 = [] then 0
   else (head lst1 * head lst2) + dot (tail lst1) (tail lst2)
-in dot [1;2;3] [3;4;5];
+in dot [1;2;3] [3;4;5];;
 
 let prod =
   let rec gen n =
     if n = 0 then << 0 >>
     else << nth ~(lift(~(lift(n-1)))) w * ~(lift(nth ~(lift(n-1)) v)) + ~(~(gen (n-1))) >>
   in fun n -> < fun v -> ~(gen n) >
-in run(< fun w -> ~(run (prod 2) [5; 7]) >) [2; 3];
+in run(< fun w -> ~(run (prod 2) [5; 7]) >) [2; 3];;

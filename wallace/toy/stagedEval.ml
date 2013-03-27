@@ -123,6 +123,11 @@ module rec StagedEval : Eval = struct
       let e' = eval_staged env e n in
       IfE (g', t', e')
 
+  | PairE (e1, e2) ->
+      let e1' = eval_staged env e1 n in
+      let e2' = eval_staged env e2 n in
+      PairE (e1', e2')
+
   | ValueE v -> ValueE v
   | BoxE exp -> BoxE (eval_staged env exp (n+1))
   | UnboxE exp ->

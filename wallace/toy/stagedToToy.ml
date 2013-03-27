@@ -12,7 +12,7 @@ let rec stagedToToy
 | AbsE (Abs (id, exp)) -> EFun [[PVar id], stagedToToy exp]
 | LetInE (Valbind (id, (FixE (fixid, Abs (argid, abs)))), body) ->
     if fixid = id then
-      ELet (true, [PVar argid, stagedToToy abs], stagedToToy body)
+      ELet (true, [PVar id, EFun [[PVar argid], stagedToToy abs]], stagedToToy body)
     else
       failwith "fixid != id"
 | LetInE (Valbind (id, bind), body) ->

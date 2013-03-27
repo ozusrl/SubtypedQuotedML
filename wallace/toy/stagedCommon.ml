@@ -8,8 +8,6 @@ and const = CInt of int | CBool of bool
 
 and abs = Abs of id * exp
 
-and binop = Plus | Minus | Mult | Div | Equals
-
 and exp  =
   | IdE      of id
   | ConstE   of const

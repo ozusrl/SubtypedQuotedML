@@ -10,7 +10,7 @@ let pow_gen =
       in pow_gen n
 in let cubeCode = pow_gen 3 <v>
 in let cube = run(<fun v -> ~cubeCode >)
-in cube 4 + cube 3  
+in cube 4 + cube 3
 ;;
 
 let temp = lift 42

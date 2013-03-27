@@ -426,7 +426,7 @@ let rec generalize lvl (fld : field) : fieldScheme =
 let add_to_envlist lvl id (scm : fieldScheme) (envs : tyenv list) =
   let rec add_or_replace id (scm : fieldScheme) : tyenv -> tyenv = function
   | EmptyRec -> Row (id, scm, EmptyRec)
-  | Rho recvar ->  
+  | Rho recvar ->
       let theta, newrho = new_fieldvar lvl, new_recvar lvl (IdSet.singleton id) in
       unify_recs (Rho recvar) (Row (id, FieldVar theta, Rho newrho));
       (Row (id, scm, Rho newrho))

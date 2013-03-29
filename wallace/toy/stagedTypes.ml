@@ -193,15 +193,21 @@ let rec norm_ty = function
   | _ -> TVar typevar)
 | t -> t
 
-let rec norm_tyrec : 'a rhoMap -> 'a rhoMap = function
-| EmptyRec -> EmptyRec
-| Rho recvar -> (match !recvar with
-  | LinkTo r1, lvl, ids ->
-      let r1' = norm_tyrec r1 in
-      recvar := (LinkTo r1', lvl, ids);
-      r1'
-  | _ -> Rho recvar)
-| t -> t
+let rec norm_tyrec (rho : 'a rhoMap) : 'a rhoMap =
+  let rec mkRec fields rho = match fields with
+  | [] -> rho
+  | ((id, a) :: rest) -> Row (id, a, mkRec rest rho)
+  in
+
+  let rec iter fields = function
+  | EmptyRec -> mkRec fields EmptyRec
+  | Row (id, a, next) -> iter ((id, a) :: fields) next
+  | Rho recvar -> (match !recvar with
+    | NoLink _, _, _ -> mkRec fields (Rho recvar)
+    | LinkTo recvar', _, _ -> iter fields recvar')
+  in
+
+  iter [] rho
 
 let rec norm_field = function
 | FieldType ty -> FieldType ty
@@ -279,7 +285,7 @@ let rec field_set tyrec = match norm_tyrec tyrec with
 let rec get_field_ty id tyrec = match norm_tyrec tyrec with
 | EmptyRec
 | Rho _ -> assert false
-| Row (id', ty, rest) -> if id = id' then ty else get_field_ty id rest
+| Row (id', ty, rest) -> if id = id' then norm_field ty else get_field_ty id rest
 
 let rec get_row_var tyrec = match norm_tyrec tyrec with
 | EmptyRec -> None
@@ -330,7 +336,8 @@ and unify_recs tyrec1 tyrec2 =
       end
 | EmptyRec, Rho link
 | Rho link, EmptyRec -> (match !link with
-  | NoLink _, _, _ -> link_recvar_to_tyrec link EmptyRec
+  | NoLink _, _, _ ->
+      link_recvar_to_tyrec link EmptyRec
   | LinkTo r, _, _ -> failwith "LinkTo not expected for Rho due to normalization.")
 | _, _ ->
     let field_set_1 = field_set tyrec1 in

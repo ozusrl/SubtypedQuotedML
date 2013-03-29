@@ -31,12 +31,13 @@
 %%
 
 main:
-  | exp DSEMI                    { $1 }
-
-dec:
-  | ID EQ exp                   { Valbind ($1,$3) }
+  | exp DSEMI                   { $1 }
 
 exp:
+  | exp2                        { $1 }
+  | exp SEMI exp                { SeqE ($1, $3) }
+
+exp2:
   | ID                          { IdE $1 }
   | INT                         { ConstE (CInt $1) }
   | BOOL                        { ConstE (CBool $1) }
@@ -81,7 +82,8 @@ exp:
   | BANG exp                    { DerefE $2 }
   | exp ASSIGN exp              { AssignE ($1, $3) }
 
-  | exp SEMI exp                { SeqE ($1, $3) }
+dec:
+  | ID EQ exp                   { Valbind ($1,$3) }
 
 else_part:
   | ELSEIF exp THEN exp else_part
@@ -101,8 +103,8 @@ lst:
   | LBRACK RBRACK               { EmpLstE }
 
 lst_contents:
-  | exp                         { AppE (AppE (IdE "::", $1), EmpLstE) }
-  | exp SEMI lst_contents       { AppE (AppE (IdE "::", $1), $3) }
+  | exp2                        { AppE (AppE (IdE "::", $1), EmpLstE) }
+  | exp2 SEMI lst_contents      { AppE (AppE (IdE "::", $1), $3) }
 
 record:
   | LB RB                       { EmptyRecE }

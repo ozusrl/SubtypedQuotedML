@@ -39,10 +39,6 @@ main:
   | exp DSEMI                   { $1 }
 
 exp:
-  | exp2                        { $1 }
-  | exp SEMI exp                { SeqE ($1, $3) }
-
-exp2:
   | ID                          { IdE $1 }
   | INT                         { ConstE (CInt $1) }
   | BOOL                        { ConstE (CBool $1) }
@@ -86,6 +82,8 @@ exp2:
   | REF exp                     { RefE $2 }
   | BANG exp                    { DerefE $2 }
   | exp ASSIGN exp              { AssignE ($1, $3) }
+
+  | exp SEMI exp                { SeqE ($1, $3) }
 
 dec:
   | ID EQ exp                   { Valbind ($1,$3) }

@@ -1,5 +1,10 @@
 %{
   open StagedCommon
+
+  let rec seqToCons e =
+    match e with
+    | SeqE(left, right) -> AppE (AppE (IdE "::", left), seqToCons(right))
+    | _ -> AppE (AppE (IdE "::", e), EmpLstE)
 %}
 
 %token EOF DOT FUN LP RP LB RB UNBOX RUN LET IN SEMI LT GT COMMA ARROW COLON
@@ -99,12 +104,8 @@ eqfunc:
   | ID EQ exp                   { Abs ($1, $3) }
 
 lst:
-  | LBRACK lst_contents RBRACK  { $2 }
+  | LBRACK exp RBRACK           { seqToCons($2) }
   | LBRACK RBRACK               { EmpLstE }
-
-lst_contents:
-  | exp2                        { AppE (AppE (IdE "::", $1), EmpLstE) }
-  | exp2 SEMI lst_contents      { AppE (AppE (IdE "::", $1), $3) }
 
 record:
   | LB RB                       { EmptyRecE }

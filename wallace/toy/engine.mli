@@ -43,6 +43,8 @@ module type S = sig
 
   val infer: environment -> InternalSyntax.expression -> scheme
 
+  val add_to_env: string -> scheme -> environment -> environment
+
 end
 
 (* The module is parameterized by an implementation of environments. It is also parameterized by an implementation

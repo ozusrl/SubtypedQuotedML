@@ -53,7 +53,8 @@ let rec parse_and_eval_exprs ?(repl = false) lexbuf =
         "error while running record calc: ";
 
         Printf.printf "translated expression in toy:\n";
-        Toy.handle_phrase (ToySyntax.PhraseExpr (stagedToToy translation));
+        let _ = Toy.handle_phrase Toy.Engine.builtin (ToySyntax.PhraseExpr (stagedToToy translation)) in
+        ()
 
     with exc -> print_endline (Printexc.to_string exc));
 

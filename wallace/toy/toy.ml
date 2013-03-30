@@ -37,14 +37,28 @@ open Engine
 (*i --------------------------------------------------------------------------------------------------------------- i*)
 (*s \mysection{Trying things out} *)
 
-let handle_phrase = function
+let handle_phrase env = function
   | ToySyntax.PhraseExpr e ->
       let e = Compile.expression e in
-      InternalSyntax.print e; flush stdout; print_newline(); print_newline(); (* TEMPORARY *)
-      let scheme = simplify (infer Engine.builtin e) in
+      (*InternalSyntax.print e; flush stdout; print_newline(); print_newline();*)
+      let scheme = simplify (infer env e) in
       Print.text true scheme;
       print_newline();
-      flush stdout
+      flush stdout;
+      None
+  | ToySyntax.PhraseLet (fix, bindings) ->
+      let open ToySyntax in
+
+      (match bindings with
+      | [PVar var, exp] ->
+	  let e = Compile.expression exp in
+	  let scheme = simplify (infer env e) in
+	  Print.text true scheme;
+	  print_newline();
+	  flush stdout;
+	  Some (Engine.add_to_env var scheme env)
+      | _ -> failwith "unsupprted let declaration")
+
   | _ ->
       failwith "Other phrases currently unsupported." (* TEMPORARY *)
 
@@ -54,17 +68,15 @@ let failure message =
 
 let handle_channel channel =
   let lexbuf = Lexing.from_channel channel in
-  while true do
+
+  let rec iter env =
     try
-
       print_string "? "; flush stdout;
-
       let phrase = ToyParser.phrase ToyLexer.token lexbuf in
-
       print_newline();
-
-      handle_phrase phrase
-
+      (match handle_phrase env phrase with
+      | None -> iter env
+      | Some env' -> iter env')
     with
     | ToyLexer.Error (message, start_loc, end_loc) ->
 	failure (Printf.sprintf
@@ -90,8 +102,8 @@ let handle_channel channel =
 		   string1 string2)
     | Sys_error message ->
 	failure ("System error: " ^ message)
-
-  done
+  in
+  iter Engine.builtin
 
 (*let () = handle_channel stdin*)
 

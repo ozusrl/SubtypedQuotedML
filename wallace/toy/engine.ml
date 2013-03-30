@@ -44,6 +44,8 @@ module type S = sig
 
   val infer: environment -> InternalSyntax.expression -> scheme
 
+  val add_to_env: string -> scheme -> environment -> environment
+
 end
 
   (* The module is parameterized by an implementation of environments. It is also parameterized by an implementation
@@ -393,6 +395,8 @@ let scheme_VMatch =
 
   open MlAlgebra
   open InternalSyntax
+
+  let add_to_env = Env.bind_let
 
   let rec infer env = function
     | VVar name -> (

@@ -2,7 +2,11 @@ type id = string
 
 type 'a env = (id * 'a ref) list
 
-type dec = Valbind of (id * exp)
+type toplevel =
+  | Exp of exp
+  | Decl of dec
+
+and dec = Valbind of (id * exp)
 
 and const = CInt of int | CBool of bool
 

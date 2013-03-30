@@ -9,6 +9,7 @@ exception SelectException of (exp * id)
 module type Eval = sig
   val eval : value env -> exp -> value
   val run : exp -> value
+  val runWEnv : value env -> exp -> value
 end
 
 module EvalBase (EvalExtend : Eval) : Eval = struct
@@ -82,7 +83,9 @@ module EvalBase (EvalExtend : Eval) : Eval = struct
 
   (* Function application }}} *****************************************)
 
-  let run exp = eval stdenv exp
+  let run = eval stdenv
+
+  let runWEnv = eval
 
 end
 
@@ -152,6 +155,8 @@ module rec StagedEval : Eval = struct
 
   let run = CoreEval.run
 
+  let runWEnv = CoreEval.eval
+
 end
 
 
@@ -177,5 +182,7 @@ module rec RecordEval : Eval = struct
       failwith ("Unrecognized expression " ^ exp_str ^ " in RecordEval.eval.")
 
   let run = CoreEval.run
+
+  let runWEnv = CoreEval.eval
 
 end

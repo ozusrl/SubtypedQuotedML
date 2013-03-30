@@ -14,7 +14,7 @@
 %token <int>    INT
 %token <bool>   BOOL
 %start main
-%type <StagedCommon.exp> main
+%type <StagedCommon.toplevel> main
 
 /* Assoc and precedence definitions */
 
@@ -36,7 +36,13 @@
 %%
 
 main:
-  | exp DSEMI                   { $1 }
+  | exp DSEMI                   { Exp $1 }
+  | decl DSEMI                  { Decl $1 }
+
+decl:
+  | LET dec                     { $2 }
+  | LET ID eqfunc               { Valbind ($2, AbsE $3) }
+  | LET REC ID eqfunc           { Valbind ($3, FixE ($3, $4)) }
 
 exp:
   | ID                          { IdE $1 }

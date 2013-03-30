@@ -59,23 +59,17 @@ let rec recordExp_of_env env =
   | Rho rho -> IdE rho
   | Cons(env',x) -> RecUpdE(recordExp_of_env env', x, IdE x)
 
-let mkStdrec init =
-  List.fold_left (fun acc (v,f) -> Cons(acc, v)) init stdenv
-
-
 (* translate multi-staged language to language with records *)
-let rec translate exp envStack : (exp * ctxs) =
-  let stdrec = List.map fst stdenv in
-
+let translate translateEnv exp envStack : (exp * ctxs) =
   let rec lookup env x =
     match env with
-    | Empty -> if List.mem x stdrec then IdE x
+    | Empty -> if List.mem x translateEnv then IdE x
                else failwith ("Id " ^ x ^ " not found in the translation env.")
-    | Rho rho -> if List.mem x stdrec then IdE x
+    | Rho rho -> if List.mem x translateEnv then IdE x
                  else SelectE(IdE rho, x)
     | Cons(r', y) -> if x = y then IdE x else lookup r' x
   in
-  match envStack with
+  let rec translate exp envStack = match envStack with
   | [] -> failwith "translate: empty env list"
   | env :: rest_envs -> (match exp with
 
@@ -161,6 +155,8 @@ let rec translate exp envStack : (exp * ctxs) =
         (SeqE (e1', e2'), merge_ctxs ctxs ctxs')
 
     | EmptyRecE | SelectE _ | RecUpdE _ -> failwith "record expressions in translate")
+  in
+  translate exp envStack
 
 
-let translate exp = translate exp [Empty]
+let translate env exp = translate env exp [Empty]

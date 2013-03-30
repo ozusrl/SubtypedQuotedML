@@ -45,7 +45,7 @@ let handle_phrase env = function
       Print.text true scheme;
       print_newline();
       flush stdout;
-      None
+      (scheme, None)
   | ToySyntax.PhraseLet (fix, bindings) ->
       let open ToySyntax in
 
@@ -56,7 +56,7 @@ let handle_phrase env = function
 	  Print.text true scheme;
 	  print_newline();
 	  flush stdout;
-	  Some (Engine.add_to_env var scheme env)
+	  (scheme, Some (Engine.add_to_env var scheme env))
       | _ -> failwith "unsupprted let declaration")
 
   | _ ->
@@ -74,7 +74,7 @@ let handle_channel channel =
       print_string "? "; flush stdout;
       let phrase = ToyParser.phrase ToyLexer.token lexbuf in
       print_newline();
-      (match handle_phrase env phrase with
+      (match snd (handle_phrase env phrase) with
       | None -> iter env
       | Some env' -> iter env')
     with

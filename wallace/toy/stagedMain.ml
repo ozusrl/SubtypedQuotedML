@@ -30,13 +30,34 @@ let eval fn exp msg printer err_msg =
     print_endline (err_msg ^ Printexc.to_string exc);
     None
 
+type toy_phrase =
+| ToyDecl of id * ToySyntax.expression
+| ToyExp  of ToySyntax.expression
+
+let debug_id (a : ToySyntax.expression) = a
+
+let rec make_toy_expr (toplevels : toplevel list) : ToySyntax.expression =
+  let rec make_let = function
+  | [] -> failwith "empty exp list in make_let"
+  | [Decl (Valbind (_, exp))]
+  | [Exp exp] ->
+      exp
+  | Decl binding :: rest ->
+      LetInE (binding, make_let rest)
+  | Exp e :: rest ->
+      LetInE (Valbind ("_", e), make_let rest)
+  in
+
+  stagedToToy (make_let toplevels)
+
 let run repl lexbuf =
   let open StagedTypes in
   let rec iter (staged_env : value env)
                (staged_scmenv : StagedTypes.tyenv)
                (record_env : value env)
                (record_scmenv : StagedTypes.tyenv)
-               toy_env =
+               (toy_program : toplevel list)
+               =
     let translate_env = (List.map fst staged_env) in
     if repl then
       print_string "> ";
@@ -44,7 +65,8 @@ let run repl lexbuf =
 
       try
         match StagedParser.main StagedLexer.mytoken lexbuf with
-        | Decl (Valbind (id, exp)) ->
+
+        | Decl (Valbind (id, exp)) as decl ->
             let is_expansive = expansive 0 exp in
 
             let staged_ty = inferty [staged_scmenv] exp in
@@ -102,24 +124,15 @@ let run repl lexbuf =
             | Some e -> (id, ref e) :: record_env
             in
 
-            Printf.printf "translated expression in toy:\n";
-            let toy_env' =
-              let trans_exp =
-                if is_expansive then
-                  AppE (AbsE (Abs ("__p__", IdE "__p__")), translation)
-                else
-                  translation
-              in
-              match Toy.handle_phrase toy_env (ToySyntax.PhraseExpr (stagedToToy trans_exp)) with
-              | (scheme, None) -> Toy.Engine.add_to_env id scheme toy_env
-              | (_, Some e) -> e
-            in
+            print_endline "transated expression in toy:";
+            let toy_program' = toy_program @ [decl] in
+            let _ = Toy.handle_phrase Toy.Engine.builtin (ToySyntax.PhraseExpr (debug_id (make_toy_expr toy_program'))) in
 
             iter staged_env'
                  staged_scmenv'
                  record_env'
                  record_scmenv'
-                 toy_env'
+                 toy_program'
 
         | Exp exp ->
             let _ = inferty [staged_scmenv] exp in
@@ -143,14 +156,15 @@ let run repl lexbuf =
               "error while running record calc: "
             in
 
-            Printf.printf "translated expression in toy:\n";
-            let _ = Toy.handle_phrase toy_env (ToySyntax.PhraseExpr (stagedToToy translation)) in
+            print_endline "transated expression in toy:";
+            let toy_program' = toy_program @ [Exp exp] in
+            let _ = Toy.handle_phrase Toy.Engine.builtin (ToySyntax.PhraseExpr (debug_id (make_toy_expr toy_program'))) in
 
             iter staged_env
                  staged_scmenv
                  record_env
                  record_scmenv
-                 toy_env
+                 toy_program'
 
       with Parsing.Parse_error -> print_endline "Parse error."
          | StagedLexer.EndInput -> ()
@@ -161,7 +175,7 @@ let run repl lexbuf =
        StagedTypes.stdenv_tyrec
        StagedCommon.stdenv
        StagedTypes.stdenv_tyrec
-       Toy.Engine.builtin
+       []
 
 let _ =
   if Array.length (Sys.argv) < 2 then

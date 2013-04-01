@@ -66,7 +66,7 @@ let run repl lexbuf =
       try
         match StagedParser.main StagedLexer.mytoken lexbuf with
 
-        | Decl (Valbind (id, exp)) as decl ->
+        | Decl (Valbind (id, exp)) ->
             let is_expansive = expansive 0 exp in
 
             let staged_ty = inferty [staged_scmenv] exp in
@@ -125,7 +125,7 @@ let run repl lexbuf =
             in
 
             print_endline "transated expression in toy:";
-            let toy_program' = toy_program @ [decl] in
+            let toy_program' = toy_program @ [Decl (Valbind (id, translation))] in
             let _ = Toy.handle_phrase Toy.Engine.builtin (ToySyntax.PhraseExpr (debug_id (make_toy_expr toy_program'))) in
 
             iter staged_env'
@@ -157,7 +157,7 @@ let run repl lexbuf =
             in
 
             print_endline "transated expression in toy:";
-            let toy_program' = toy_program @ [Exp exp] in
+            let toy_program' = toy_program @ [Exp translation] in
             let _ = Toy.handle_phrase Toy.Engine.builtin (ToySyntax.PhraseExpr (debug_id (make_toy_expr toy_program'))) in
 
             iter staged_env

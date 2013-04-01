@@ -128,9 +128,9 @@ let translate translateEnv exp envStack : (exp * ctxs) =
         let newEnv = Rho rho in
         let env' = newEnv :: envStack in
         let (exp', k) = translate exp env' in
-        let body = (AbsE (Abs (rho,
-                               SeqE(AppE (IdE "_force_record", IdE rho),
-                                    exp')))) in
+        let body =
+          AbsE (Abs (rho, SeqE (AppE (IdE "_force_record", IdE rho), exp')))
+        in
         (match k with
          | [] -> (body, [])
          | k :: kx -> (app_of_ctx k body, kx))

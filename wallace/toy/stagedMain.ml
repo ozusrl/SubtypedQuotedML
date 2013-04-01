@@ -36,8 +36,8 @@ let run repl lexbuf =
                (staged_scmenv : StagedTypes.tyenv)
                (record_env : value env)
                (record_scmenv : StagedTypes.tyenv)
-               toy_env
-               (translate_env : id list) =
+               toy_env =
+    let translate_env = (List.map fst staged_env) in
     if repl then
       print_string "> ";
       flush stdout;
@@ -120,7 +120,6 @@ let run repl lexbuf =
                  record_env'
                  record_scmenv'
                  toy_env'
-                 (List.map fst staged_env')
 
         | Exp exp ->
             let _ = inferty [staged_scmenv] exp in
@@ -152,7 +151,6 @@ let run repl lexbuf =
                  record_env
                  record_scmenv
                  toy_env
-                 translate_env
 
       with Parsing.Parse_error -> print_endline "Parse error."
          | StagedLexer.EndInput -> ()
@@ -164,7 +162,6 @@ let run repl lexbuf =
        StagedCommon.stdenv
        StagedTypes.stdenv_tyrec
        Toy.Engine.builtin
-       (List.map fst StagedCommon.stdenv)
 
 let _ =
   if Array.length (Sys.argv) < 2 then

@@ -49,7 +49,7 @@ exp:
   | INT                         { ConstE (CInt $1) }
   | BOOL                        { ConstE (CBool $1) }
   | FUN func                    { AbsE $2 }
-  | FIX ID func                 { FixE ($2, $3) }
+/*   | FIX ID func                 { FixE ($2, $3) } */
 
   | LET dec IN exp              { LetInE ($2, $4) }
   | LET ID eqfunc IN exp        { LetInE (Valbind ($2, AbsE $3), $5) }

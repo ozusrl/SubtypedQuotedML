@@ -188,7 +188,7 @@ and print_typevar typevar = match !typevar with
 | LinkTo ty, _ -> print_ty ty
 
 and print_recvar recvar = match !recvar with
-| NoLink id, _, btms -> printf "{'%s" id; print_idset btms; printf "@ }"
+| NoLink id, _, btms -> printf "{@ '%s" id; print_idset btms; printf "@ }"
 | LinkTo tyrec, _, _ -> print_tyrec tyrec
 
 and print_recvar_tail recvar = match !recvar with

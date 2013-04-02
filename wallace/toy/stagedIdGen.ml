@@ -17,7 +17,8 @@ module StagedIdGen (P : sig end) = struct
       done;
       str
       in
+      let r = int_to_name !last_name in
       last_name := !last_name + 1;
-      int_to_name !last_name
+      r
 
 end

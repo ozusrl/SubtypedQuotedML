@@ -407,7 +407,7 @@ and unify (t1 : ty) (t2 : ty) : unit =
 
 (* type inference --{{{-------------------------------------------------------*)
 
-let rec generalize lvl (fld : field) : fieldScheme =
+let generalize lvl (fld : field) : fieldScheme =
   let notfreeincontext link =
     link_lvl link > lvl
   in

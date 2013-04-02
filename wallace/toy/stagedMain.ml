@@ -58,117 +58,128 @@ let run repl lexbuf =
                (record_scmenv : StagedTypes.tyenv)
                (toy_program : toplevel list)
                =
+
     let translate_env = (List.map fst staged_env) in
+
     if repl then
-      print_string "> ";
-      flush stdout;
+      begin
+        print_string "> ";
+        flush stdout
+      end
+    else
+      ();
 
-      try
-        match StagedParser.main StagedLexer.mytoken lexbuf with
+    try
+      match StagedParser.main StagedLexer.mytoken lexbuf with
 
-        | Decl (Valbind (id, exp)) ->
-            let is_expansive = expansive 0 exp in
+      | Decl (Valbind (id, exp)) ->
+          let is_expansive = expansive 0 exp in
 
-            let staged_ty = inferty [staged_scmenv] exp in
-            let staged_scmenv' =
-              match staged_ty with
-              | None -> staged_scmenv
-              | Some ty ->
-                  let scm =
-                    if is_expansive then
-                      Scheme ([], FieldType ty)
-                    else
-                      generalize 0 (FieldType ty)
-                  in
-                  Row (id, scm, staged_scmenv)
-            in
-
-            let staged_val = eval
-              (StagedEval.runWEnv staged_env)
-              exp
-              "evaluated with StagedEval:"
-              print_value
-              "error while running staged calc: "
-            in
-            let staged_env' =
-              match staged_val with
-              | None -> staged_env
-              | Some v -> (id, ref v) :: staged_env
-            in
-
-            let (translation, _) = translate translate_env exp in
-
-            let record_ty = inferty [record_scmenv] translation in
-            let record_scmenv' =
-              match record_ty with
-              | None -> record_scmenv
-              | Some ty ->
-                  let scm =
-                    if is_expansive then
-                      Scheme ([], FieldType ty)
-                    else
-                      generalize 0 (FieldType ty)
+          let staged_ty = inferty [staged_scmenv] exp in
+          let staged_scmenv' =
+            match staged_ty with
+            | None -> staged_scmenv
+            | Some ty ->
+                let scm =
+                  if is_expansive then
+                    Scheme ([], FieldType ty)
+                  else
+                    generalize 0 (FieldType ty)
                 in
-                Row (id, scm, record_scmenv)
-            in
+                Row (id, scm, staged_scmenv)
+          in
 
-            let record_val = eval
-              (RecordEval.runWEnv record_env)
-              translation
-              "evaluated with RecordEval:"
-              print_value
-              "error while running record calc: "
-            in
-            let record_env' = match record_val with
-            | None -> record_env
-            | Some e -> (id, ref e) :: record_env
-            in
+          let staged_val = eval
+            (StagedEval.runWEnv staged_env)
+            exp
+            "evaluated with StagedEval:"
+            print_value
+            "error while running staged calc: "
+          in
+          let staged_env' =
+            match staged_val with
+            | None -> staged_env
+            | Some v -> (id, ref v) :: staged_env
+          in
 
-            print_endline "transated expression in toy:";
-            let toy_program' = toy_program @ [Decl (Valbind (id, translation))] in
-            let _ = Toy.handle_phrase Toy.Engine.builtin (ToySyntax.PhraseExpr (debug_id (make_toy_expr toy_program'))) in
+          let (translation, _) = translate translate_env exp in
 
-            iter staged_env'
-                 staged_scmenv'
-                 record_env'
-                 record_scmenv'
-                 toy_program'
+          let record_ty = inferty [record_scmenv] translation in
+          let record_scmenv' =
+            match record_ty with
+            | None -> record_scmenv
+            | Some ty ->
+                let scm =
+                  if is_expansive then
+                    Scheme ([], FieldType ty)
+                  else
+                    generalize 0 (FieldType ty)
+              in
+              Row (id, scm, record_scmenv)
+          in
 
-        | Exp exp ->
-            let _ = inferty [staged_scmenv] exp in
-            let _ = eval
-              (StagedEval.runWEnv staged_env)
-              exp
-              "evaluated with StagedEval:"
-              print_value
-              "error while running staged calc: "
-            in
+          let record_val = eval
+            (RecordEval.runWEnv record_env)
+            translation
+            "evaluated with RecordEval:"
+            print_value
+            "error while running record calc: "
+          in
+          let record_env' = match record_val with
+          | None -> record_env
+          | Some e -> (id, ref e) :: record_env
+          in
 
-            let (translation, _) = translate translate_env exp in
+          print_endline "transated expression in toy:";
+          let toy_program' = toy_program @ [Decl (Valbind (id, translation))] in
+          let _ = Toy.handle_phrase Toy.Engine.builtin (ToySyntax.PhraseExpr (debug_id (make_toy_expr toy_program'))) in
 
-            let _ = inferty [record_scmenv] translation in
+          iter staged_env'
+               staged_scmenv'
+               record_env'
+               record_scmenv'
+               toy_program'
 
-            let _ = eval
-              (RecordEval.runWEnv record_env)
-              translation
-              "evaluated with RecordEval:"
-              print_value
-              "error while running record calc: "
-            in
+      | Exp exp ->
+          let _ = inferty [staged_scmenv] exp in
+          let _ = eval
+            (StagedEval.runWEnv staged_env)
+            exp
+            "evaluated with StagedEval:"
+            print_value
+            "error while running staged calc: "
+          in
 
-            print_endline "transated expression in toy:";
-            let toy_program' = toy_program @ [Exp translation] in
-            let _ = Toy.handle_phrase Toy.Engine.builtin (ToySyntax.PhraseExpr (debug_id (make_toy_expr toy_program'))) in
+          let (translation, _) = translate translate_env exp in
 
-            iter staged_env
-                 staged_scmenv
-                 record_env
-                 record_scmenv
-                 toy_program'
+          let _ = inferty [record_scmenv] translation in
 
-      with Parsing.Parse_error -> print_endline "Parse error."
-         | StagedLexer.EndInput -> ()
-         | exc -> print_endline (Printexc.to_string exc)
+          let _ = eval
+            (RecordEval.runWEnv record_env)
+            translation
+            "evaluated with RecordEval:"
+            print_value
+            "error while running record calc: "
+          in
+
+          print_endline "transated expression in toy:";
+          let toy_program' = toy_program @ [Exp translation] in
+          let _ = Toy.handle_phrase Toy.Engine.builtin (ToySyntax.PhraseExpr (debug_id (make_toy_expr toy_program'))) in
+
+          iter staged_env
+               staged_scmenv
+               record_env
+               record_scmenv
+               toy_program'
+
+    with Parsing.Parse_error ->
+          print_endline "Parse error.";
+          iter staged_env staged_scmenv record_env record_scmenv toy_program
+       | StagedLexer.EndInput -> ()
+       | exc ->
+           print_endline (Printexc.to_string exc);
+           iter staged_env staged_scmenv record_env record_scmenv toy_program
+
   in
 
   iter StagedCommon.stdenv

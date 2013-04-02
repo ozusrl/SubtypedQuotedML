@@ -1,4 +1,5 @@
 open StagedCommon
+open StagedIdGen
 
 (*  misc. --{{{-------------------------------------------------------------- *)
 
@@ -79,25 +80,8 @@ let link_lvl (link : linkvar) : int = match link with
 | FV fieldvar -> let (_, i)    = !fieldvar in i
 | RV recvar   -> let (_, i, _) = !recvar in i
 
-let last_tyvar = ref 0
-let new_name _ =
-  let rec mkname i res =
-    if i < 26 then
-      Char.chr (97+i) :: res
-    else
-      mkname (i/26-1) (Char.chr (97 + i mod 26) :: res)
-  in
-  let int_to_name i =
-    let name_lst = mkname i [] in
-    let len = List.length name_lst in
-    let str = String.make len ' ' in
-    for j = 0 to (len-1) do
-      str.[j] <- List.nth name_lst j
-    done;
-    str
-  in
-  last_tyvar := !last_tyvar + 1;
-  int_to_name !last_tyvar
+module IdGen = StagedIdGen (struct end)
+open IdGen
 
 let new_nolink _ = NoLink (new_name ())
 

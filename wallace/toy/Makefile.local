@@ -52,7 +52,7 @@ depend: beforedepend
 # ---------------------------------------------------------------------------------------------------------------------
 # Staged parts
 
-STAGED_OBJS=stagedCommon.cmo stagedParser.cmo stagedLexer.cmo stagedIdGen.cmo stagedTypes.cmo stagedTranslate.cmo stagedPrint.cmo stagedEval.cmo stagedToToy.cmo stagedMain.cmo
+STAGED_OBJS=stagedCommon.cmo stagedParser.cmo stagedLexer.cmo stagedIdGen.cmo stagedTypes.cmo stagedTranslate.cmo stagedPrint.cmo stagedEval.cmo stagedToToy.cmo stagedSimplify.cmo stagedMain.cmo
 STAGED_LEXER_SOURCE=stagedLexer.mll
 STAGED_LEXER_TARGET=stagedLexer.ml
 

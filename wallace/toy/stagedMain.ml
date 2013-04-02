@@ -3,13 +3,14 @@ open StagedTranslate
 open StagedEval
 open StagedPrint
 open StagedToToy
+open StagedSimplify
 
 let inferty env exp =
   try
     let ty = StagedTypes.typ [0] env exp in
     print_endline "inferred type:";
     Format.print_flush ();
-    print_ty ty;
+    print_ty (rename_vars (simplify_type ty));
     Format.print_flush ();
     print_endline "";
     Some ty

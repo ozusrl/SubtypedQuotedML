@@ -575,6 +575,7 @@ and stdenv =
   let arith_op_ty = Scheme ([], FieldType (TFun (TInt, TFun (TInt, TInt)))) in
   let ref0 id = TVar (ref (NoLink id, 0)) in
   let tv id = TV (ref (NoLink id, 0)) in
+  let rv id = RV (ref (NoLink id, 0, IdSet.empty)) in
 
   List.map (fun id -> (id, arith_op_ty)) [ "+"; "-"; "*"; "/" ]
     @ [ ("=",  Scheme ( [tv "a"]
@@ -592,6 +593,7 @@ and stdenv =
                          , FieldType (TFun (TPair (ref0 "a", ref0 "b"), ref0 "a"))))
       ; ("snd",   Scheme ( [tv "a"; tv "b"]
                          , FieldType (TFun (TPair (ref0 "a", ref0 "b"), ref0 "b"))))
+      ; ("_force_record", Scheme ( [rv "a"], FieldType (TFun( TRec (Rho (ref (NoLink "a", 0, IdSet.empty))), TUnit))))
       ]
 
 let stdenv_tyrec =

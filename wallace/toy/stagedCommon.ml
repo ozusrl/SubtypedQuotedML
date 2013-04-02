@@ -215,6 +215,11 @@ let stdenv =
     | not_pair       -> raise (TypeMismatch ("TyPair", val_type not_pair)))))
   in
 
+  let force_record = ClosV (StdFun (StdFunction ("force_record", function
+    | RecV v -> UnitV
+    | not_record -> raise (TypeMismatch ("TyRecord", val_type not_record)))))
+  in
+
   (* standard environment *)
   [ ("+",     ref (mk_arith_fun "+" (+)))
   ; ("-",     ref (mk_arith_fun "-" (-)))
@@ -228,6 +233,7 @@ let stdenv =
   ; ("nth",   ref nth)
   ; ("fst",   ref fst)
   ; ("snd",   ref snd)
+  ; ("_force_record", ref force_record)
   ]
 
 (* Mappings of OCaml function and standard environment }}} **********)

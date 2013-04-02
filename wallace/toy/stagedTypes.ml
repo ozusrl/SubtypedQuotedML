@@ -177,22 +177,6 @@ let rec norm_ty = function
   | _ -> TVar typevar)
 | t -> t
 
-let rec norm_tyrec (rho : 'a rhoMap) : 'a rhoMap =
-  let rec mkRec fields rho = match fields with
-  | [] -> rho
-  | ((id, a) :: rest) -> Row (id, a, mkRec rest rho)
-  in
-
-  let rec iter fields = function
-  | EmptyRec -> mkRec fields EmptyRec
-  | Row (id, a, next) -> iter ((id, a) :: fields) next
-  | Rho recvar -> (match !recvar with
-    | NoLink _, _, _ -> mkRec fields (Rho recvar)
-    | LinkTo recvar', _, _ -> iter fields recvar')
-  in
-
-  iter [] rho
-
 let rec norm_field = function
 | FieldType ty -> FieldType ty
 | FieldVar fieldvar -> (match !fieldvar with
@@ -202,6 +186,22 @@ let rec norm_field = function
       fv1'
   | _ -> FieldVar fieldvar)
 | Bot -> Bot
+
+let rec norm_tyrec (rho : 'a rhoMap) : 'a rhoMap =
+  let rec mkRec fields rho = match fields with
+  | [] -> rho
+  | ((id, a) :: rest) -> Row (id, a, mkRec rest rho)
+  in
+
+  let rec iter fields = function
+  | EmptyRec -> mkRec fields EmptyRec
+  | Row (id, a, next) -> iter ((id, norm_field a) :: fields) next
+  | Rho recvar -> (match !recvar with
+    | NoLink _, _, _ -> mkRec fields (Rho recvar)
+    | LinkTo recvar', _, _ -> iter fields recvar')
+  in
+
+  iter [] rho
 
 (* ---}}}---------------------------------------------------------------------*)
 

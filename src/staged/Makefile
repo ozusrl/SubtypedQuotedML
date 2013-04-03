@@ -33,6 +33,7 @@ $(TOY):
 	cd $(TOYDIR); make toy.cma
 
 clean::
+	rm -f .generated-dependencies
 	rm -f $(TARGET) $(LEXER_TARGET) $(PARSER_TARGET) *.cmi *.cmx *.cma *.cmo *.o staged
 	cd $(TOYDIR) && make clean
 

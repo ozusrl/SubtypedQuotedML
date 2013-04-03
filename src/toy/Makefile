@@ -23,6 +23,8 @@ depend:
 	@make -f Makefile.local depend
 
 toy.cma:
+	@(cd ../gromit; make)
+	@(cd ../wallace; make)
 	@make -f Makefile.local toy.cma
 
 clean:

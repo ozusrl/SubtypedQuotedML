@@ -1,5 +1,5 @@
 {
-  open StagedParser
+  open Parser
   exception EndInput
 }
 

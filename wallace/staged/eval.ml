@@ -1,5 +1,5 @@
-open StagedCommon
-open StagedPrint
+open Common
+open Print
 
 exception StageException
 exception Failure of string

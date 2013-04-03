@@ -1,13 +1,13 @@
-open StagedCommon
-open StagedTranslate
-open StagedEval
-open StagedPrint
-open StagedToToy
-open StagedSimplify
+open Common
+open Translate
+open Eval
+open Print
+open TranslateToToy
+open Simplify
 
 let inferty env exp =
   try
-    let ty = StagedTypes.typ [0] env exp in
+    let ty = Types.typ [0] env exp in
     print_endline "inferred type:";
     Format.print_flush ();
     print_ty (rename_vars (simplify_type ty));
@@ -52,11 +52,11 @@ let rec make_toy_expr (toplevels : toplevel list) : ToySyntax.expression =
   stagedToToy (make_let toplevels)
 
 let run repl lexbuf =
-  let open StagedTypes in
+  let open Types in
   let rec iter (staged_env : value env)
-               (staged_scmenv : StagedTypes.tyenv)
+               (staged_scmenv : Types.tyenv)
                (record_env : value env)
-               (record_scmenv : StagedTypes.tyenv)
+               (record_scmenv : Types.tyenv)
                (toy_program : toplevel list)
                =
 
@@ -71,7 +71,7 @@ let run repl lexbuf =
       ();
 
     try
-      match StagedParser.main StagedLexer.mytoken lexbuf with
+      match Parser.main Lexer.mytoken lexbuf with
 
       | Decl (Valbind (id, exp)) ->
           let is_expansive = expansive 0 exp in
@@ -176,17 +176,17 @@ let run repl lexbuf =
     with Parsing.Parse_error ->
           print_endline "Parse error.";
           iter staged_env staged_scmenv record_env record_scmenv toy_program
-       | StagedLexer.EndInput -> ()
+       | Lexer.EndInput -> ()
        | exc ->
            print_endline (Printexc.to_string exc);
            iter staged_env staged_scmenv record_env record_scmenv toy_program
 
   in
 
-  iter StagedCommon.stdenv
-       StagedTypes.stdenv_tyrec
-       StagedCommon.stdenv
-       StagedTypes.stdenv_tyrec
+  iter Common.stdenv
+       Types.stdenv_tyrec
+       Common.stdenv
+       Types.stdenv_tyrec
        []
 
 let _ =

@@ -1,6 +1,6 @@
-open StagedCommon
+open Common
 open Format
-open StagedTypes
+open Types
 
 let infix_ops = ["+"; "-"; "*"; "/"; "="; "::"]
 

@@ -1,5 +1,5 @@
 %{
-  open StagedCommon
+  open Common
 
   let rec seqToCons e =
     match e with
@@ -14,7 +14,7 @@
 %token <int>    INT
 %token <bool>   BOOL
 %start main
-%type <StagedCommon.toplevel> main
+%type <Common.toplevel> main
 
 /* Assoc and precedence definitions */
 

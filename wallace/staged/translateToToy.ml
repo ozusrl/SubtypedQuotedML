@@ -1,8 +1,8 @@
-open StagedCommon
+open Common
 open ToySyntax
 
 let rec stagedToToy
-    : StagedCommon.exp -> ToySyntax.expression = function
+    : Common.exp -> ToySyntax.expression = function
 | IdE id -> EVar id
 | ConstE (CInt i) -> EConstant (ConstInt i)
 | ConstE (CBool b) -> EConstant (ConstBool b)

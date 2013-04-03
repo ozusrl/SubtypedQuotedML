@@ -1,6 +1,5 @@
-open StagedCommon
-open StagedTypes
-open StagedIdGen
+open Common
+open Types
 
 module IdMap = Map.Make(struct
   let compare = Pervasives.compare
@@ -94,8 +93,8 @@ let simplify_type (ty : ty) : ty =
 
   elim_fts (find_rhos ty) ty
 
-module IdGen = StagedIdGen (struct end)
-open IdGen
+module IdGen' = IdGen.IdGen (struct end)
+open IdGen'
 
 let rename_vars (ty : ty) : ty =
   let names = ref (IdMap.empty) in

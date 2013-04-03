@@ -1,5 +1,4 @@
-open StagedCommon
-open StagedIdGen
+open Common
 
 (*  misc. --{{{-------------------------------------------------------------- *)
 
@@ -80,8 +79,8 @@ let link_lvl (link : linkvar) : int = match link with
 | FV fieldvar -> let (_, i)    = !fieldvar in i
 | RV recvar   -> let (_, i, _) = !recvar in i
 
-module IdGen = StagedIdGen (struct end)
-open IdGen
+module IdGen' = IdGen.IdGen (struct end)
+open IdGen'
 
 let new_nolink _ = NoLink (new_name ())
 

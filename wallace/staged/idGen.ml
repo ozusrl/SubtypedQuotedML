@@ -1,4 +1,4 @@
-module StagedIdGen (P : sig end) = struct
+module IdGen (P : sig end) = struct
 
   let last_name = ref 0
   let new_name _ =

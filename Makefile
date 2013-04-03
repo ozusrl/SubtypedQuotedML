@@ -1,17 +1,16 @@
-.PHONY: src/main.byte src/main.native
 
-run: src/main.byte
-	./src/main.byte
+all:
+	cd src/staged && make depend && make
 
-native: src/main.native
-	rlwrap ./src/main.native
-	
-
-src/main.byte:
-	cd src && ocamlbuild -use-ocamlfind main.byte
-
-src/main.native:
-	cd src && ocamlbuild -use-ocamlfind main.native
+run:
+	cd src/staged && make depend && make
+	./src/staged/staged
 
 clean:
-	rm -rf src/_build
+	cd src/staged && make clean
+
+clean_all:
+	cd src/staged && make clean
+	cd src/toy && make clean
+	cd src/gromit && make clean
+	cd src/wallace && make clean

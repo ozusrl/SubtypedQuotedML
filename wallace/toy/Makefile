@@ -22,10 +22,8 @@ depend:
 	@(cd ../wallace; make depend)
 	@make -f Makefile.local depend
 
-staged:
-	@(cd ../gromit; make)
-	@(cd ../wallace; make)
-	@(make -f Makefile.local staged)
+toy.cma:
+	@make -f Makefile.local toy.cma
 
 clean:
 	@make -f Makefile.local clean

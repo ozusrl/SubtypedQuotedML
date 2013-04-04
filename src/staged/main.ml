@@ -40,6 +40,11 @@ let debug_id (a : ToySyntax.expression) = a
 let rec make_toy_expr (toplevels : toplevel list) : ToySyntax.expression =
   let rec make_let = function
   | [] -> failwith "empty exp list in make_let"
+  | [Decl (Valbind (name, FixE (arg, body)) as decl)] ->
+      (* special case, when last phrase is an recursive function definition,
+       * third case in decl parser generates this data:
+       *   | LET REC ID eqfunc { Valbind ($3, FixE ($3, $4)) }) *)
+      LetInE (decl, IdE name)
   | [Decl (Valbind (_, exp))]
   | [Exp exp] ->
       exp

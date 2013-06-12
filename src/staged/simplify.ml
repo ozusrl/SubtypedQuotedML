@@ -11,13 +11,15 @@ let simplify_type (ty : ty) : ty =
 
   let rec find_rhos_tyrec set tyrec = match norm_tyrec tyrec with
   | EmptyRec -> set
-  | Rho recvar -> (match !recvar with
-    | NoLink id, _, _ ->
-        if IdSet.mem id set then
-          IdSet.remove id set
-        else
-          IdSet.add id set
-    | LinkTo _, _, _ -> failwith "unexpected case in find_rhos_tyrec: should be a bug in norm_tyrec")
+  | Rho recvar ->
+      begin match !recvar with
+      | NoLink id, _, _ ->
+          if IdSet.mem id set then
+            IdSet.remove id set
+          else
+            IdSet.add id set
+      | LinkTo _, _, _ -> failwith "unexpected case in find_rhos_tyrec: should be a bug in norm_tyrec"
+      end
   | Row (_, _, rest) -> find_rhos_tyrec set rest
   in
 
@@ -32,18 +34,22 @@ let simplify_type (ty : ty) : ty =
   | TBox (tyrec, ty) ->
       let set' = find_rhos_tyrec set tyrec in
       find_rhos set' ty
-  | TVar typevar -> (match !typevar with
-    | NoLink _, _ -> set
-    | LinkTo ty, _ -> find_rhos set ty)
+  | TVar typevar ->
+      begin match !typevar with
+      | NoLink _, _ -> set
+      | LinkTo ty, _ -> find_rhos set ty
+      end
   in
 
   let find_rhos = find_rhos IdSet.empty in
 
   let rec rho_id_of_tyrec = function
   | EmptyRec -> None
-  | Rho recvar -> (match !recvar with
-    | NoLink id, _, _ -> Some id
-    | LinkTo _, _, _ -> failwith "unexpected case in rho_id_of_tyrec: should be a bug in norm_tyrec")
+  | Rho recvar ->
+      begin match !recvar with
+      | NoLink id, _, _ -> Some id
+      | LinkTo _, _, _ -> failwith "unexpected case in rho_id_of_tyrec: should be a bug in norm_tyrec"
+      end
   | Row (_, _, rest) -> rho_id_of_tyrec rest
   in
 
@@ -84,9 +90,11 @@ let simplify_type (ty : ty) : ty =
   | TList ty -> TList (elim_fts rhos ty)
   | TRef ty -> TList (elim_fts rhos ty)
   | TFun (t1, t2) -> TFun (elim_fts rhos t1, elim_fts rhos t2)
-  | TVar typevar -> (match !typevar with
-    | NoLink _, _ -> TVar typevar
-    | LinkTo typevar, _ -> elim_fts rhos typevar)
+  | TVar typevar ->
+      begin match !typevar with
+      | NoLink _, _ -> TVar typevar
+      | LinkTo typevar, _ -> elim_fts rhos typevar
+      end
   | TBox (tyrec, ty) -> TBox (elim_fts_tyrec IdSet.empty rhos tyrec, elim_fts rhos ty)
   | TRec tyrec -> TRec (elim_fts_tyrec IdSet.empty rhos tyrec)
   in
@@ -132,9 +140,11 @@ let rename_vars (ty : ty) : ty =
   | TRef t -> TRef (gen_names t)
   | TFun (t1, t2) -> TFun (gen_names t1, gen_names t2)
   | TRec tyrec -> TRec (gen_names_tyrec tyrec)
-  | TVar typevar -> (match !typevar with
-    | NoLink id, lvl -> TVar (ref (NoLink (get_name id), lvl))
-    | LinkTo ty, lvl -> TVar (ref (LinkTo (gen_names ty), lvl)))
+  | TVar typevar ->
+      begin match !typevar with
+      | NoLink id, lvl -> TVar (ref (NoLink (get_name id), lvl))
+      | LinkTo ty, lvl -> TVar (ref (LinkTo (gen_names ty), lvl))
+      end
   | TBox (tyrec, ty) -> TBox (gen_names_tyrec tyrec, gen_names ty)
   in
 

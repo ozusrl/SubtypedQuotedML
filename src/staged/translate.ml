@@ -71,93 +71,96 @@ let translate translateEnv exp envStack : (exp * ctxs) =
   in
   let rec translate exp envStack = match envStack with
   | [] -> failwith "translate: empty env list"
-  | env :: rest_envs -> (match exp with
+  | env :: rest_envs ->
+      begin match exp with
 
-    | ConstE c -> (ConstE c, [])
+      | ConstE c -> (ConstE c, [])
 
-    | IdE i -> ((lookup env i), [])
+      | IdE i -> ((lookup env i), [])
 
-    | PairE (e1, e2) ->
-        let (e1', ctxs1) = translate e1 envStack in
-        let (e2', ctxs2) = translate e2 envStack in
-        (PairE (e1', e2'), merge_ctxs ctxs1 ctxs2)
+      | PairE (e1, e2) ->
+          let (e1', ctxs1) = translate e1 envStack in
+          let (e2', ctxs2) = translate e2 envStack in
+          (PairE (e1', e2'), merge_ctxs ctxs1 ctxs2)
 
-    | EmpLstE -> (EmpLstE, [])
+      | EmpLstE -> (EmpLstE, [])
 
-    | AppE (e1, e2) ->
-        let (e1', ctxs1) = translate e1 envStack in
-        let (e2', ctxs2) = translate e2 envStack in
-        (AppE (e1', e2'), merge_ctxs ctxs1 ctxs2)
+      | AppE (e1, e2) ->
+          let (e1', ctxs1) = translate e1 envStack in
+          let (e2', ctxs2) = translate e2 envStack in
+          (AppE (e1', e2'), merge_ctxs ctxs1 ctxs2)
 
-    | AbsE (Abs (id, body)) ->
-        let env' = Cons(env, id) :: rest_envs in
-        let body', ctxs = translate body env' in
-        (AbsE (Abs (id, body')), ctxs)
+      | AbsE (Abs (id, body)) ->
+          let env' = Cons(env, id) :: rest_envs in
+          let body', ctxs = translate body env' in
+          (AbsE (Abs (id, body')), ctxs)
 
-    | LetInE (Valbind (id, value), body) ->
-        let value', ctxs1 = translate value envStack in
-        let body', ctxs2 =
-          translate body (Cons(env, id) :: rest_envs) in
-        (LetInE (Valbind (id, value'), body'), merge_ctxs ctxs1 ctxs2)
+      | LetInE (Valbind (id, value), body) ->
+          let value', ctxs1 = translate value envStack in
+          let body', ctxs2 =
+            translate body (Cons(env, id) :: rest_envs) in
+          (LetInE (Valbind (id, value'), body'), merge_ctxs ctxs1 ctxs2)
 
-    | FixE (id, (Abs (arg, body))) ->
-        let env' = Cons(env, id) in
-        let env'' = Cons(env', arg) in
-        let body', ctxs = translate body (env'' :: rest_envs) in
-        (FixE (id, (Abs (arg, body'))), ctxs)
+      | FixE (id, (Abs (arg, body))) ->
+          let env' = Cons(env, id) in
+          let env'' = Cons(env', arg) in
+          let body', ctxs = translate body (env'' :: rest_envs) in
+          (FixE (id, (Abs (arg, body'))), ctxs)
 
-    | IfE (e1, e2, e3) ->
-        let e1', ctxs = translate e1 envStack in
-        let e2', ctxs' = translate e2 envStack in
-        let e3', ctxs'' = translate e3 envStack in
-        (IfE (e1', e2', e3'), merge_ctxs ctxs (merge_ctxs ctxs' ctxs''))
+      | IfE (e1, e2, e3) ->
+          let e1', ctxs = translate e1 envStack in
+          let e2', ctxs' = translate e2 envStack in
+          let e3', ctxs'' = translate e3 envStack in
+          (IfE (e1', e2', e3'), merge_ctxs ctxs (merge_ctxs ctxs' ctxs''))
 
-    | RefE exp ->
-        let exp', ctxs = translate exp envStack in
-        (RefE exp', ctxs)
-    | DerefE exp ->
-        let exp', ctxs = translate exp envStack in
-        (DerefE exp', ctxs)
-    | AssignE (e1, e2) ->
-        let e1', ctxs1 = translate e1 envStack in
-        let e2', ctxs2 = translate e2 envStack in
-        (AssignE (e1', e2'), merge_ctxs ctxs1 ctxs2)
+      | RefE exp ->
+          let exp', ctxs = translate exp envStack in
+          (RefE exp', ctxs)
+      | DerefE exp ->
+          let exp', ctxs = translate exp envStack in
+          (DerefE exp', ctxs)
+      | AssignE (e1, e2) ->
+          let e1', ctxs1 = translate e1 envStack in
+          let e2', ctxs2 = translate e2 envStack in
+          (AssignE (e1', e2'), merge_ctxs ctxs1 ctxs2)
 
-    | BoxE exp ->
-        let rho = env_var () in
-        let newEnv = Rho rho in
-        let env' = newEnv :: envStack in
-        let (exp', k) = translate exp env' in
-        let body =
-          AbsE (Abs (rho, SeqE (AppE (IdE "_force_record", IdE rho), exp')))
-        in
-        (match k with
-         | [] -> (body, [])
-         | k :: kx -> (app_of_ctx k body, kx))
+      | BoxE exp ->
+          let rho = env_var () in
+          let newEnv = Rho rho in
+          let env' = newEnv :: envStack in
+          let (exp', k) = translate exp env' in
+          let body =
+            AbsE (Abs (rho, SeqE (AppE (IdE "_force_record", IdE rho), exp')))
+          in
+          begin match k with
+          | [] -> (body, [])
+          | k :: kx -> (app_of_ctx k body, kx)
+          end
 
-    | UnboxE exp ->
-        let exp', ctxs = translate exp rest_envs in
-        let h = hole_var () in
-        let r = recordExp_of_env env in
-        (AppE (IdE h, r), Ctx(h, exp') :: ctxs)
+      | UnboxE exp ->
+          let exp', ctxs = translate exp rest_envs in
+          let h = hole_var () in
+          let r = recordExp_of_env env in
+          (AppE (IdE h, r), Ctx(h, exp') :: ctxs)
 
-    | RunE exp ->
-        let h = hole_var () in
-        let exp', ctxs = translate exp envStack in
-        (LetInE (Valbind (h, exp'), AppE (IdE h, EmptyRecE)), ctxs)
+      | RunE exp ->
+          let h = hole_var () in
+          let exp', ctxs = translate exp envStack in
+          (LetInE (Valbind (h, exp'), AppE (IdE h, EmptyRecE)), ctxs)
 
-    | LiftE exp ->
-        let rho, h = env_var(), hole_var() in
-        let exp', ctxs = translate exp envStack in
-        (LetInE (Valbind (h, exp'), AbsE(Abs(rho, IdE h))), ctxs)
-    | ValueE v -> failwith "ValueE is not expected to occur in translation."
+      | LiftE exp ->
+          let rho, h = env_var(), hole_var() in
+          let exp', ctxs = translate exp envStack in
+          (LetInE (Valbind (h, exp'), AbsE(Abs(rho, IdE h))), ctxs)
+      | ValueE v -> failwith "ValueE is not expected to occur in translation."
 
-    | SeqE (e1, e2) ->
-        let e1', ctxs  = translate e1 envStack in
-        let e2', ctxs' = translate e2 envStack in
-        (SeqE (e1', e2'), merge_ctxs ctxs ctxs')
+      | SeqE (e1, e2) ->
+          let e1', ctxs  = translate e1 envStack in
+          let e2', ctxs' = translate e2 envStack in
+          (SeqE (e1', e2'), merge_ctxs ctxs ctxs')
 
-    | EmptyRecE | SelectE _ | RecUpdE _ -> failwith "record expressions in translate")
+      | EmptyRecE | SelectE _ | RecUpdE _ -> failwith "record expressions in translate"
+      end
   in
   translate exp envStack
 

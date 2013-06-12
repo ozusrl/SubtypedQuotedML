@@ -33,19 +33,21 @@ let rec print_exp = function
     printf "("; print_exp e1;
     printf ",@;<1 2>";
     print_exp e2; printf ")"
-| AppE (e1, e2) -> (match e1, e2 with
-  | AppE (IdE i, e1'), e2' when List.mem i infix_ops ->
-      printf "@[<hov 2>(";
-      print_exp e1';
-      printf "@;<1 2>%s@;<1 2>" i;
-      print_exp e2';
-      printf ")@]"
-  | _ ->
-      printf "@[<hov 2>(";
-      print_exp e1;
-      printf "@;<1 2>";
-      print_exp e2;
-      printf ")@]")
+| AppE (e1, e2) ->
+    begin match e1, e2 with
+    | AppE (IdE i, e1'), e2' when List.mem i infix_ops ->
+        printf "@[<hov 2>(";
+        print_exp e1';
+        printf "@;<1 2>%s@;<1 2>" i;
+        print_exp e2';
+        printf ")@]"
+    | _ ->
+        printf "@[<hov 2>(";
+        print_exp e1;
+        printf "@;<1 2>";
+        print_exp e2;
+        printf ")@]"
+    end
 | AbsE abs -> print_abs abs
 | LetInE (dec, exp) ->
     printf "@[<hv 2>let@ ";

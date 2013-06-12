@@ -44,23 +44,29 @@ module EvalBase (EvalExtend : Eval) : Eval = struct
       let clos = ClosV (Closure (env', arg, body)) in
       set_value env' id clos; clos
 
-  | IfE (guard, thenE, elseE) -> (match eval env guard with
-    | ConstV (CBool true) -> eval env thenE
-    | _ -> eval env elseE)
+  | IfE (guard, thenE, elseE) ->
+      begin match eval env guard with
+      | ConstV (CBool true) -> eval env thenE
+      | _ -> eval env elseE
+      end
 
   | RefE exp -> RefV (ref (eval env exp))
-  | DerefE exp -> (match eval env exp with
-    | RefV ref -> !ref
-    | not_ref ->
-        let val_str = sprint (fun _ -> print_value not_ref) in
-        failwith ("dereferencing a non-ref value: " ^ val_str))
-  | AssignE (e1, e2) -> (match eval env e1 with
-    | RefV ref ->
-      let v = eval env e2 in
-      ref := v; UnitV
-    | not_ref ->
-        let val_str = sprint (fun _ -> print_value not_ref) in
-        failwith ("assigning to a non-ref value: " ^ val_str))
+  | DerefE exp ->
+      begin match eval env exp with
+      | RefV ref -> !ref
+      | not_ref ->
+          let val_str = sprint (fun _ -> print_value not_ref) in
+          failwith ("dereferencing a non-ref value: " ^ val_str)
+      end
+  | AssignE (e1, e2) ->
+      begin match eval env e1 with
+      | RefV ref ->
+        let v = eval env e2 in
+        ref := v; UnitV
+      | not_ref ->
+          let val_str = sprint (fun _ -> print_value not_ref) in
+          failwith ("assigning to a non-ref value: " ^ val_str)
+      end
   | SeqE (e1, e2) -> let _ = eval env e1 in eval env e2
 
   | e -> EvalExtend.eval env e
@@ -96,9 +102,11 @@ module rec StagedEval : Eval = struct
 
   let rec eval env = function
   | BoxE exp    -> BoxV (eval_staged env exp 1)
-  | RunE exp -> (match CoreEval.eval env exp with
-    | BoxV code -> CoreEval.eval stdenv code
-    | not_code -> raise (TypeMismatch ("CodeTy", val_type not_code)))
+  | RunE exp ->
+      begin match CoreEval.eval env exp with
+      | BoxV code -> CoreEval.eval stdenv code
+      | not_code -> raise (TypeMismatch ("CodeTy", val_type not_code))
+      end
 
   | UnboxE _ -> failwith "can't unbox in stage 0"
   | LiftE exp -> BoxV (ValueE (CoreEval.eval env exp))
@@ -167,15 +175,19 @@ module rec RecordEval : Eval = struct
 
   let rec eval env = function
   | EmptyRecE -> RecV []
-  | SelectE (record, field) -> (match CoreEval.eval env record with
-    | RecV fields ->
-        (try
-          snd (List.find (fun (i, v) -> i = field) fields)
-        with Not_found -> failwith ("Not_found: " ^ field))
-    | not_rec -> raise (TypeMismatch ("RecTy", val_type not_rec)))
-  | RecUpdE (record, id, value) -> (match CoreEval.eval env record with
-    | RecV fields -> RecV ((id, CoreEval.eval env value) :: fields)
-    | not_rec -> raise (TypeMismatch ("RecTy", val_type not_rec)))
+  | SelectE (record, field) ->
+      begin match CoreEval.eval env record with
+      | RecV fields ->
+          (try
+            snd (List.find (fun (i, v) -> i = field) fields)
+          with Not_found -> failwith ("Not_found: " ^ field))
+      | not_rec -> raise (TypeMismatch ("RecTy", val_type not_rec))
+      end
+  | RecUpdE (record, id, value) ->
+      begin match CoreEval.eval env record with
+      | RecV fields -> RecV ((id, CoreEval.eval env value) :: fields)
+      | not_rec -> raise (TypeMismatch ("RecTy", val_type not_rec))
+      end
 
   | exp ->
       let exp_str = sprint (fun _ -> print_exp exp) in

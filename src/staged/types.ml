@@ -70,8 +70,10 @@ and linkvar =
 let linkvar_eq lv1 lv2 = match lv1, lv2 with
 | TV tv1, TV tv2 -> tv1 = tv2
 | FV fv1, FV fv2 -> fv1 = fv2
-| RV rv1, RV rv2 -> (match !rv1, !rv2 with
-  | (link1, lvl1, _), (link2, lvl2, _) -> link1 = link2 && lvl1 = lvl2)
+| RV rv1, RV rv2 ->
+    begin match !rv1, !rv2 with
+    | (link1, lvl1, _), (link2, lvl2, _) -> link1 = link2 && lvl1 = lvl2
+    end
 | _, _ -> false
 
 let link_lvl (link : linkvar) : int = match link with
@@ -151,9 +153,11 @@ and subst ty ss = match ty, ss with
   | TRef t, ss -> TRef (subst t ss)
   | TFun (t1, t2), ss -> TFun (subst t1 ss, subst t2 ss)
   | TRec tyrec, ss -> TRec (subst_tyrec tyrec ss)
-  | TVar typevar, (l, t, _, _) :: rest -> (match !typevar with
-    | NoLink _, _ -> if linkvar_eq (TV typevar) l then TVar t else subst ty rest
-    | LinkTo ty, _ -> subst ty ss)
+  | TVar typevar, (l, t, _, _) :: rest ->
+      begin match !typevar with
+      | NoLink _, _ -> if linkvar_eq (TV typevar) l then TVar t else subst ty rest
+      | LinkTo ty, _ -> subst ty ss
+      end
   | TBox (tyrec, ty), ss -> TBox (subst_tyrec tyrec ss, subst ty ss)
 
 let rec instantiate_env lvl env : tyrec =
@@ -168,22 +172,26 @@ let rec instantiate_env lvl env : tyrec =
 (* norm ty ---{{{-------------------------------------------------------------*)
 
 let rec norm_ty = function
-| TVar typevar -> (match !typevar with
-  | LinkTo t1, _ ->
-      let t2 = norm_ty t1 in
-      set_link typevar (LinkTo t2);
-      t2
-  | _ -> TVar typevar)
+| TVar typevar ->
+    begin match !typevar with
+    | LinkTo t1, _ ->
+        let t2 = norm_ty t1 in
+        set_link typevar (LinkTo t2);
+        t2
+    | _ -> TVar typevar
+    end
 | t -> t
 
 let rec norm_field = function
 | FieldType ty -> FieldType ty
-| FieldVar fieldvar -> (match !fieldvar with
-  | LinkTo fv1, lvl ->
-      let fv1' = norm_field fv1 in
-      fieldvar := (LinkTo fv1', lvl);
-      fv1'
-  | _ -> FieldVar fieldvar)
+| FieldVar fieldvar ->
+    begin match !fieldvar with
+    | LinkTo fv1, lvl ->
+        let fv1' = norm_field fv1 in
+        fieldvar := (LinkTo fv1', lvl);
+        fv1'
+    | _ -> FieldVar fieldvar
+    end
 | Bot -> Bot
 
 let rec norm_tyrec (rho : 'a rhoMap) : 'a rhoMap =
@@ -195,9 +203,11 @@ let rec norm_tyrec (rho : 'a rhoMap) : 'a rhoMap =
   let rec iter fields = function
   | EmptyRec -> mkRec fields EmptyRec
   | Row (id, a, next) -> iter ((id, norm_field a) :: fields) next
-  | Rho recvar -> (match !recvar with
-    | NoLink _, _, _ -> mkRec fields (Rho recvar)
-    | LinkTo recvar', _, _ -> iter fields recvar')
+  | Rho recvar ->
+      begin match !recvar with
+      | NoLink _, _, _ -> mkRec fields (Rho recvar)
+      | LinkTo recvar', _, _ -> iter fields recvar'
+      end
   in
 
   iter [] rho
@@ -318,10 +328,12 @@ and unify_recs tyrec1 tyrec2 =
           link_recvar_to_tyrec link2 tyrec1
       end
 | EmptyRec, Rho link
-| Rho link, EmptyRec -> (match !link with
-  | NoLink _, _, _ ->
-      link_recvar_to_tyrec link EmptyRec
-  | LinkTo r, _, _ -> failwith "LinkTo not expected for Rho due to normalization.")
+| Rho link, EmptyRec ->
+    begin match !link with
+    | NoLink _, _, _ ->
+        link_recvar_to_tyrec link EmptyRec
+    | LinkTo r, _, _ -> failwith "LinkTo not expected for Rho due to normalization."
+    end
 | _, _ ->
     let field_set_1 = field_set tyrec1 in
     let field_set_2 = field_set tyrec2 in
@@ -340,18 +352,18 @@ and unify_recs tyrec1 tyrec2 =
         let option_recvar = get_row_var target_tyrec in
         match option_recvar with
         | None ->
-            (match get_field_ty e tyrec with
+            begin match get_field_ty e tyrec with
             | FieldType ty -> failwith ("can't unify field " ^ e ^ " with Bot")
             | FieldVar fieldvar -> link_fieldvar_to_field fieldvar Bot
-            | Bot -> ())
+            | Bot -> ()
+            end
         | Some rho ->
             let (NoLink id, lvl, bottoms) = !rho in
             if IdSet.mem e bottoms then
-              begin
-                match get_field_ty e tyrec with
-                | FieldType _ -> failwith ("can't unify field " ^ e ^ " with Bot")
-                | FieldVar fieldvar -> link_fieldvar_to_field fieldvar Bot
-                | Bot -> ()
+              begin match get_field_ty e tyrec with
+              | FieldType _ -> failwith ("can't unify field " ^ e ^ " with Bot")
+              | FieldVar fieldvar -> link_fieldvar_to_field fieldvar Bot
+              | Bot -> ()
               end
             else
               let new_rho_id = new_name () in

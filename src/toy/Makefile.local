@@ -28,6 +28,14 @@ CAMLWEB=ocamlweb
 GROMIT=$(GROMITDIR)/gromit
 WALLACE=$(WALLACEDIR)/wallace.cma
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	SED = sed -i
+endif
+ifeq ($(UNAME_S),Darwin)
+	SED = sed -i.bak
+endif
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Compile options.
 
@@ -90,9 +98,9 @@ TYPE_PARSER_SOURCE=mlAlgebra_parser.mly
 
 $(TYPE_PARSER_TARGET): $(TYPE_PARSER_SOURCE)
 	@rm -f $(TYPE_PARSER_TARGET)
-	sed -i "s/'$(PROBLEMATIC_TYVAR)/$(DUMMY_TYPE)/" $^
+	$(SED) "s/'$(PROBLEMATIC_TYVAR)/$(DUMMY_TYPE)/" $^
 	$(CAMLYACC) $^
-	sed -i "s/$(DUMMY_TYPE)/'$(PROBLEMATIC_TYVAR)/" $(TYPE_PARSER_TARGET)
+	$(SED) "s/$(DUMMY_TYPE)/'$(PROBLEMATIC_TYVAR)/" $(TYPE_PARSER_TARGET)
 
 clean::
 	rm -f $(TYPE_PARSER_TARGET)

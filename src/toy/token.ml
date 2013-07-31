@@ -92,6 +92,8 @@ module Text = struct
 	printf "V1"
     | TokenVariant ->
 	printf "[]"
+    | TokenNonRecord ->
+	printf "NonRecord"
 
 end
 
@@ -175,6 +177,8 @@ module TeX = struct
 	print_string "\\top_V"
     | TokenVariant ->
 	print_string "[]"
+    | TokenNonRecord ->
+	print_string "NonRecord"
 
 end
 

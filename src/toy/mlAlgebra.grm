@@ -54,6 +54,7 @@ signature begin
     constructor Float printed 'Float ['Float]
     constructor Char printed 'Char ['Char]
     constructor String printed 'String ['String]
+    constructor NonRecord printed 'NonRecord ['NonRecord]
 
     let Bottom < Arrow
     let Arrow < Top
@@ -81,9 +82,23 @@ signature begin
     let Bottom < String
     let String < Top
 
-
     let Int < Float
     let Char < Int
+
+    let Bottom < NonRecord
+    let NonRecord < Top
+
+    let Arrow < NonRecord
+    let Pair < NonRecord
+    let Ref < NonRecord
+    let Vect < NonRecord
+    let Variant < NonRecord
+    let Int < NonRecord
+    let Unit < NonRecord
+    let Bool < NonRecord
+    let Float < NonRecord
+    let Char < NonRecord
+    let String < NonRecord
   end
 
   lattice Record begin
@@ -119,5 +134,5 @@ signature begin
 
 end
 
-priority Bottom Top Int Unit Bool Float Char String Record Variant Vect Ref Pair Arrow RBottom RAbsent RTop RPresent REither VAbsent VPresent VTop
+priority Bottom Top NonRecord Int Unit Bool Float Char String Record Variant Vect Ref Pair Arrow RBottom RAbsent RTop RPresent REither VAbsent VPresent VTop
 

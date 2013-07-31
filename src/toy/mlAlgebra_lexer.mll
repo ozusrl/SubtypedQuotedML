@@ -68,6 +68,7 @@ rule token = parse
   | "string" { String }
   | "ref" { Ref }
   | "vect" { Vect }
+  | "NonRecord" { NonRecord }
   | leadingchar identchar *
       { Ident (Lexing.lexeme lexbuf) }
   | eof { EOF }

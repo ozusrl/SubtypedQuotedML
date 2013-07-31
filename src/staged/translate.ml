@@ -93,6 +93,9 @@ let translate translateEnv exp envStack : (exp * ctxs) =
       | AbsE (Abs (id, body)) ->
           let env' = Cons(env, id) :: rest_envs in
           let body', ctxs = translate body env' in
+          let body' =
+            SeqE (AppE (IdE "force_nonrecord", IdE id), body')
+          in
           (AbsE (Abs (id, body')), ctxs)
 
       | LetInE (Valbind (id, value), body) ->

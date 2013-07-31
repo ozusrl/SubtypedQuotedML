@@ -341,6 +341,7 @@ let builtin = List.fold_right (fun (x, sigma) env -> Env.bind_let x sigma env)
   ];
   "default", simple "'a -> { \\(RPre 'a) }";
   "_force_record", simple "{ 'a } -> unit";
+  "force_nonrecord", simple "NonRecord -> unit";
 
   "_reject", simple "0 -> 0";
   "_vreject", simple " [ VAbs ] -> 0";

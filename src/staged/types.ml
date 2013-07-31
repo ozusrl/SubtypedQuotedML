@@ -589,6 +589,7 @@ and stdenv =
       ; ("snd",   Scheme ( [tv "a"; tv "b"]
                          , FieldType (TFun (TPair (ref0 "a", ref0 "b"), ref0 "b"))))
       ; ("_force_record", Scheme ([rv "a"], FieldType (TFun (TRec (Rho (ref (NoLink "a", 0, IdSet.empty))), TUnit))))
+      ; ("force_nonrecord", Scheme ([rv "a"], FieldType (TFun (ref0 "a", TUnit))))
       ]
 
 let stdenv_tyrec =

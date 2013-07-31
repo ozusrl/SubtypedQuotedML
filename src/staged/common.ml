@@ -215,9 +215,14 @@ let stdenv =
     | not_pair       -> raise (TypeMismatch ("TyPair", val_type not_pair)))))
   in
 
-  let force_record = ClosV (StdFun (StdFunction ("force_record", function
+  let force_record = ClosV (StdFun (StdFunction ("_force_record", function
     | RecV v -> UnitV
     | not_record -> raise (TypeMismatch ("TyRecord", val_type not_record)))))
+  in
+
+  let force_nonrecord = ClosV (StdFun (StdFunction ("force_nonrecord", function
+    | RecV v -> raise (TypeMismatch ("TyNonRecord", val_type (RecV v)))
+    | not_record -> UnitV)))
   in
 
   (* standard environment *)
@@ -234,6 +239,7 @@ let stdenv =
   ; ("fst",   ref fst)
   ; ("snd",   ref snd)
   ; ("_force_record", ref force_record)
+  ; ("force_nonrecord", ref force_nonrecord)
   ]
 
 (* Mappings of OCaml function and standard environment }}} **********)

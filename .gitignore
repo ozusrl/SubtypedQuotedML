@@ -44,3 +44,5 @@ src/toy/toyParser.ml
 src/toy/toyParser.mli
 
 src/wallace/.generated-dependencies
+
+src/toy/toy
